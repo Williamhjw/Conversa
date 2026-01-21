@@ -217,7 +217,7 @@ const MyChatList = (props) => {
           </Text>
 
           <Flex>
-            <InputGroup w={{ base: "fit-content", md: "fit-content" }} mx={2}>
+            <InputGroup w={{ base: "fit-content", lg: "fit-content" }} mx={2}>
               <InputLeftElement pointerEvents="none">
                 <Search2Icon color="gray.300" />
               </InputLeftElement>
@@ -229,7 +229,7 @@ const MyChatList = (props) => {
               />
             </InputGroup>
 
-            <Box minW={"fit-content"} display={{ base: "block", md: "none" }}>
+            <Box minW={"fit-content"} display={{ base: "block", lg: "none" }}>
               <ProfileMenu
                 user={user}
                 isOpen={isOpen}

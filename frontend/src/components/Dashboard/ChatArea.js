@@ -294,7 +294,7 @@ export const ChatArea = () => {
             h="100%"
             w={{
               base: "100vw",
-              md: "100%",
+              lg: "100%",
             }}
           >
             <ChatAreaTop />
@@ -332,11 +332,11 @@ export const ChatArea = () => {
               position="fixed"
               w={{
                 base: "100%",
-                md: "70%",
+                lg: "70%",
               }}
               bottom={{
                 base: 1,
-                md: 3,
+                lg: 3,
               }}
               backgroundColor={
                 localStorage.getItem("chakra-ui-color-mode") === "dark"
@@ -347,7 +347,7 @@ export const ChatArea = () => {
               <Box
                 mx={{
                   base: 6,
-                  md: 3,
+                  lg: 3,
                 }}
                 w="fit-content"
               >
@@ -365,7 +365,7 @@ export const ChatArea = () => {
                 <InputGroup
                   w={{
                     base: "95%",
-                    md: "98%",
+                    lg: "98%",
                   }}
                   m="auto"
                   onKeyDown={handleKeyPress}
@@ -420,7 +420,7 @@ export const ChatArea = () => {
           <Box
             display={{
               base: "none",
-              md: "block",
+              lg: "block",
             }}
             mx="auto"
             w="fit-content"

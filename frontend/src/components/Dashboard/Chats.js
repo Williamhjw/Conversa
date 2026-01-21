@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Tabs, TabPanel, TabPanels } from "@chakra-ui/react";
 import MyChatList from "./MyChatList";
 import NewChats from "./NewChats";
@@ -11,7 +11,7 @@ const Chats = () => {
       <Tabs
         isFitted
         variant="enclosed"
-        w={{ base: "95vw", md: "100%" }}
+        w={{ base: "95vw", lg: "100%" }}
         index={activeTab}
         colorScheme="purple"
         h={"100%"}
@@ -19,23 +19,23 @@ const Chats = () => {
         <TabPanels>
           <TabPanel
             py={1}
-            mt={{ base: 2, md: 0 }}
+            mt={{ base: 2, lg: 0 }}
             px={2}
-            w={{ base: "96vw", md: "29vw" }}
-            borderRightWidth={{ base: "0px", md: "1px" }}
+            w={{ base: "96vw", lg: "29vw" }}
+            borderRightWidth={{ base: "0px", lg: "1px" }}
             h={{
               base: "85vh",
-              md: "88.5vh",
+              lg: "88.5vh",
             }}
           >
             <MyChatList setactiveTab={setactiveTab} />
           </TabPanel>
           <TabPanel
-            mt={{ base: 2, md: 0 }}
-            px={{ base: 0, md: 2 }}
-            w={{ base: "96vw", md: "29vw" }}
-            // h={{ base: "80vh", md: "88.5vh" }}
-            borderRightWidth={{ base: "0px", md: "1px" }}
+            mt={{ base: 2, lg: 0 }}
+            px={{ base: 0, lg: 2 }}
+            w={{ base: "96vw", lg: "29vw" }}
+            // h={{ base: "80vh", lg: "88.5vh" }}
+            borderRightWidth={{ base: "0px", lg: "1px" }}
           >
             <NewChats setactiveTab={setactiveTab} />
           </TabPanel>

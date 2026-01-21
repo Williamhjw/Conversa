@@ -133,7 +133,7 @@ const NewChats = (props) => {
       <Divider my={2} />
 
       <Box
-        h={{ base: "63vh", md: "72vh" }}
+        h={{ base: "63vh", lg: "72vh" }}
         overflowY={"scroll"}
         sx={{
           "::-webkit-scrollbar": {
@@ -143,14 +143,11 @@ const NewChats = (props) => {
             width: "6px",
           },
           "::-webkit-scrollbar-thumb": {
-            background: { base: "gray.300", md: "gray.500" },
+            background: { base: "gray.300", lg: "gray.500" },
             borderRadius: "24px",
           },
         }}
       >
-        <Button my={2} mx={2} colorScheme="purple">
-          Create New Group <AddIcon ml={2} fontSize={"12px"} />
-        </Button>
         {users.map(
           (user) =>
             user._id !== context.user._id && (
@@ -187,6 +184,12 @@ const NewChats = (props) => {
                 </Button>
               </Flex>
             )
+        )}
+
+        {users.length === 0 && (
+          <Text textAlign={"center"} color={"gray.500"} mt={4}>
+            No Other Users Found
+          </Text>
         )}
       </Box>
     </>

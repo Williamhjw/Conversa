@@ -63,7 +63,7 @@ const Dashboard = () => {
               h={"80vh"}
               w={{
                 base: "100%",
-                md: "29vw",
+                lg: "29vw",
               }}
               mt={10}
               mx={2}
@@ -76,7 +76,7 @@ const Dashboard = () => {
               </Stack>
             </Box>
 
-            <Box h={"80vh"} w={"75%"} display={{ base: "none", md: "block" }}>
+            <Box h={"80vh"} w={"75%"} display={{ base: "none", lg: "block" }}>
               <Stack mt={5}>
                 <SkeletonCircle size="10" mx={2} />
 
@@ -97,21 +97,21 @@ const Dashboard = () => {
       )}
       {!isLoading && (
         <Box
-          p={{ base: 0, md: 0 }}
-          w={{ base: "93vw", md: "98vw" }}
-          h={{ base: "85vh", md: "90vh" }}
+          p={{ base: 0, lg: 0 }}
+          w={{ base: "93vw", lg: "98vw" }}
+          h={{ base: "100%", lg: "93%" }}
           m="0px auto"
           borderRadius="lg"
-          borderWidth={{ base: "0px", md: "2px" }}
+          borderWidth={{ base: "0px", lg: "2px" }}
           minW={"min-content"}
         >
           <Flex h={"100%"}>
             <Box
               display={{
                 base: activeChatId !== "" ? "none" : "flex",
-                md: "block",
+                lg: "block",
               }}
-              w={{ base: "100%", md: "29vw" }}
+              w={{ base: "100%", lg: "29vw" }}
             >
               <Chats />
             </Box>
@@ -120,7 +120,7 @@ const Dashboard = () => {
               h={"inherit"}
               w={{
                 base: "100%",
-                md: "70vw",
+                lg: "70vw",
               }}
               minW={"min-content"}
             >

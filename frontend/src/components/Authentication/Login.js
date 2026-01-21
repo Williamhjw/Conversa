@@ -143,7 +143,7 @@ const Login = (props) => {
       >
         <Avatar bg="purple.300" />
         <Heading color="pruple.400">Welcome Back</Heading>
-        <Card minW={{ base: "90%", md: "468px" }} borderRadius={15} shadow={0}>
+        <Card minW={{ base: "90%", lg: "468px" }} borderRadius={15} shadow={0}>
           <CardBody p={0}>
             <form>
               <Stack spacing={4}>

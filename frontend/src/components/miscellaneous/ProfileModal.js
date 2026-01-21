@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -15,7 +15,6 @@ import {
   Stack,
   Text,
   Flex,
-  IconButton,
   Image,
   Circle,
   Box,
@@ -30,7 +29,6 @@ export const ProfileModal = ({ isOpen, onClose, user, setUser }) => {
   const { hostName } = context;
   const [editing, setEditing] = useState(false);
   const [editedUser, setEditedUser] = useState(user);
-  const [showEditIcon, setShowEditIcon] = useState(false);
   const [showchangepassword, setshowchangepassword] = useState(false);
 
   const toast = useToast();
@@ -45,7 +43,7 @@ export const ProfileModal = ({ isOpen, onClose, user, setUser }) => {
   const handleSave = async () => {
     try {
       setUser(editedUser);
-    } catch (error) {}
+    } catch (error) { }
 
     context.setUser(editedUser);
 
@@ -95,31 +93,15 @@ export const ProfileModal = ({ isOpen, onClose, user, setUser }) => {
     setEditedUser({ ...editedUser, [name]: value });
   };
 
-  const handleMouseOver = () => {
-    setShowEditIcon(true);
-  };
-
-  const handleMouseOut = () => {
-    setShowEditIcon(false);
-  };
-
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader p={6} borderBottomWidth="1px" borderColor="gray.100">
-          <Flex mt={3} justify="space-between" align="center">
+          <Flex justify="space-between" align="center">
             <Text fontSize="xl" fontWeight="bold">
               Profile
             </Text>
-            <IconButton
-              aria-label="Edit profile"
-              icon={<EditIcon />}
-              variant="ghost"
-              colorScheme="purple"
-              display={user._id !== context.user?._id ? "none" : "block"}
-              onClick={handleEdit}
-            />
           </Flex>
         </ModalHeader>
         <ModalCloseButton />
@@ -135,7 +117,7 @@ export const ProfileModal = ({ isOpen, onClose, user, setUser }) => {
                 <Stack spacing={2}>
                   <Image
                     borderRadius="full"
-                    boxSize={{ base: "100px", md: "150px" }}
+                    boxSize={{ base: "100px", lg: "150px" }}
                     src={user.profilePic}
                     alt="Dan Abramov"
                     mx="auto"
@@ -144,40 +126,23 @@ export const ProfileModal = ({ isOpen, onClose, user, setUser }) => {
                     {user.name}
                   </Text>
                   <Text fontSize="md">About: {user.about}</Text>
-                  <Text fontSize="md">email: {user.email}</Text>
+                  {!user.email?.includes("combot") && <Text fontSize="md">email: {user.email}</Text>}
                 </Stack>
               </TabPanel>
               <TabPanel>
                 <Stack spacing={4}>
                   <Circle
-                    cursor="pointer"
-                    onMouseOver={handleMouseOver}
-                    onMouseOut={handleMouseOut}
                     onClick={() => {
                       console.log("clicked");
                     }}
                   >
                     <Image
                       borderRadius="full"
-                      boxSize={{ base: "100px", md: "150px" }}
+                      boxSize={{ base: "100px", lg: "150px" }}
                       src={user.profilePic}
                       alt="profile-pic"
                       mx="auto"
                     />
-                    {showEditIcon && (
-                      <Box
-                        textAlign={"center"}
-                        position="absolute"
-                        top="auto"
-                        left="auto"
-                      >
-                        <IconButton
-                          aria-label="Edit profile picture"
-                          icon={<EditIcon />}
-                        ></IconButton>
-                        <Text fontSize={"xx-small"}>click to edit profile</Text>
-                      </Box>
-                    )}
                   </Circle>
                   <Input
                     name="name"
