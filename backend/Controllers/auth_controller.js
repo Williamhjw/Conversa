@@ -250,8 +250,6 @@ const sendotp = async (req, res) => {
 module.exports = {
   register,
   login,
-  getNonFriendsList,
   authUser,
-  updateprofile,
   sendotp,
 };
