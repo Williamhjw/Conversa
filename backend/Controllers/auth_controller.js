@@ -5,15 +5,13 @@ const jwt = require("jsonwebtoken");
 const Conversation = require("../Models/Conversation.js");
 const ObjectId = require("mongoose").Types.ObjectId;
 const nodemailer = require("nodemailer");
-const dotenv = require("dotenv");
-dotenv.config({ path: "./.env" });
-const { JWT_SECRET } = require("../secrets.js");
+const { JWT_SECRET, EMAIL, PASSWORD } = require("../secrets.js");
 
 let mailTransporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASSWORD,
+    user: EMAIL,
+    pass: PASSWORD,
   },
 });
 
@@ -241,7 +239,7 @@ const sendotp = async (req, res) => {
     }, 300000);
 
     let mailDetails = {
-      from: process.env.EMAIL,
+      from: EMAIL,
       to: email,
       subject: "Login with your Otp",
 

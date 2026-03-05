@@ -1,11 +1,10 @@
 const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-dotenv.config({ path: "./.env" });
+const { MONGO_URI, MONGO_DB_NAME} = require("./secrets");
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      dbName: "conversa-chatapp",
+    const conn = await mongoose.connect(MONGO_URI, {
+      dbName: MONGO_DB_NAME,
     });
 
     console.log(`✅ MongoDB connected: ${conn.connection.host}`);

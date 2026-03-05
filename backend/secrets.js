@@ -2,6 +2,7 @@ const dotenv = require("dotenv");
 dotenv.config({ path: ".env" });
 
 const MONGO_URI = process.env.MONGO_URI;
+const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
 const JWT_SECRET = process.env.JWT_SECRET;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -13,6 +14,7 @@ const AWS_SECRET = process.env.AWS_SECRET;
 
 module.exports = {
   MONGO_URI,
+  MONGO_DB_NAME,
   JWT_SECRET,
   AWS_ACCESS_KEY,
   AWS_SECRET,
