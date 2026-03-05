@@ -177,19 +177,6 @@ const SingleMessage = ({
                   )}
               </Flex>
 
-              {message.reaction && (
-                <Box
-                  fontSize="xs"
-                  position="absolute"
-                  bg={isSender ? "purple.300" : "blue.300"}
-                  bottom={-1}
-                  left={-1}
-                  borderRadius="lg"
-                >
-                  {message.reaction}
-                </Box>
-              )}
-
               {/* Hover controls */}
               {!isSender && isHovered && (
                 <Box position="absolute" top="0" right="-50px" display="flex">

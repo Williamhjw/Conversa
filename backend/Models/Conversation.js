@@ -7,16 +7,6 @@ const ConversationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    isGroup: {
-      type: Boolean,
-      default: false,
-    },
-    name: {
-      type: String,
-      required: function () {
-        return this.isGroup;
-      },
-    },
     unreadCounts: [
       {
         userId: {

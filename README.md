@@ -348,7 +348,7 @@ In the broader context of the project, this file ensures that the backend's depe
 					<table>
 					<tr>
 						<td><b><a href='https://github.com/pankil-soni/mern-chat-app/blob/master/backend/Models/Message.js'>Message.js</a></b></td>
-						<td>- Defines a MongoDB model for messages within a chat application, using Mongoose<br>- Each message links to conversation and user IDs, supports text and image content, tracks reactions, and records which users have seen the message<br>- It also allows messages to be marked as deleted from users' views and supports replies to other messages.</td>
+						<td>- Defines a MongoDB model for messages within a chat application, using Mongoose<br>- Each message links to conversation and user IDs, supports text and image content and records which users have seen the message<br>- It also allows messages to be marked as deleted from users' views and supports replies to other messages.</td>
 					</tr>
 					<tr>
 						<td><b><a href='https://github.com/pankil-soni/mern-chat-app/blob/master/backend/Models/Conversation.js'>Conversation.js</a></b></td>
@@ -536,7 +536,7 @@ This file is a crucial component of the frontend's visual feedback system, contr
 									</tr>
 									<tr>
 										<td><b><a href='https://github.com/pankil-soni/mern-chat-app/blob/master/frontend/src/components/Dashboard/SingleMessage.js'>SingleMessage.js</a></b></td>
-										<td>- SingleMessage.js manages the display and interaction functionalities for individual messages within the dashboard component of the frontend<br>- It handles user actions such as copying and deleting messages, and visually represents message status, sender information, and reactions, enhancing user experience in real-time communication scenarios.</td>
+										<td>- SingleMessage.js manages the display and interaction functionalities for individual messages within the dashboard component of the frontend<br>- It handles user actions such as copying and deleting messages, and visually represents message status, sender information and enhancing user experience in real-time communication scenarios.</td>
 									</tr>
 									<tr>
 										<td><b><a href='https://github.com/pankil-soni/mern-chat-app/blob/master/frontend/src/components/Dashboard/NewChats.js'>NewChats.js</a></b></td>

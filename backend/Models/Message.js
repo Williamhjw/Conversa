@@ -24,10 +24,6 @@ const MessageSchema = new mongoose.Schema(
         return !this.text;
       },
     },
-    reaction: {
-      type: String,
-      default: "",
-    },
     seenBy: [
       {
         user: {
