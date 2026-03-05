@@ -5,7 +5,7 @@ const fetchuser = (req, res, next) => {
   const token = req.header("auth-token");
   if (!token) {
     console.log("token not found");
-    res.status(401).send("Please authenticate using a valid token");
+    return res.status(401).send("Please authenticate using a valid token");
   } else {
     try {
       const data = jwt.verify(token, JWT_SECRET);
@@ -13,7 +13,7 @@ const fetchuser = (req, res, next) => {
       next();
     } catch (error) {
       console.error(error.message);
-      res.status(401).send("Please authenticate using a valid token");
+      return res.status(401).send("Please authenticate using a valid token");
     }
   }
 };

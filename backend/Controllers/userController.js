@@ -84,6 +84,7 @@ const getNonFriendsList = async (req, res) => {
 const updateprofile = async (req, res) => {
   try {
     const dbuser = await User.findById(req.user.id);
+    const allowedUpdates = { name: req.body.name, about: req.body.about };
 
     if (req.body.newpassword) {
       const passwordCompare = await bcrypt.compare(
@@ -98,12 +99,15 @@ const updateprofile = async (req, res) => {
 
       const salt = await bcrypt.genSalt(10);
       const secPass = await bcrypt.hash(req.body.newpassword, salt);
-      req.body.password = secPass;
-
-      delete req.body.oldpassword;
-      delete req.body.newpassword;
+      allowedUpdates.password = secPass;
     }
-    await User.findByIdAndUpdate(req.user.id, req.body);
+
+    // Remove undefined keys
+    Object.keys(allowedUpdates).forEach(
+      (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key]
+    );
+
+    await User.findByIdAndUpdate(req.user.id, allowedUpdates);
     res.status(200).json({ message: "Profile Updated" });
   } catch (error) {
     res.status(500).send("Internal Server Error");

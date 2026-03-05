@@ -231,15 +231,14 @@ const sendotp = async (req, res) => {
       </html>`,
     };
 
-    await mailTransporter.sendMail(mailDetails, function (err, data) {
-      if (err) {
-        console.log("Error Occurs", err);
-        res.status(400).json({ message: "Error Occurs" });
-      } else {
-        console.log("Email sent successfully");
-        res.status(200).json({ message: "OTP sent" });
-      }
-    });
+    // Use promise-based approach
+    try {
+      await mailTransporter.sendMail(mailDetails);
+      return res.status(200).json({ message: "OTP sent" });
+    } catch (err) {
+      console.error("Mail error:", err);
+      return res.status(500).json({ message: "Failed to send OTP" });
+    }
   } catch (error) {
     console.error(error.message);
     res.status(500).send("Internal Server Error");
