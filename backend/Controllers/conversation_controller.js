@@ -47,7 +47,6 @@ const getConversation = async (req, res) => {
     const conversation = await Conversation.findById(req.params.id).populate(
       "members",
       "-password",
-      "-phoneNum"
     );
 
     if (!conversation) {

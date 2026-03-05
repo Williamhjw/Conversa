@@ -174,9 +174,6 @@ const NewChats = (props) => {
                       <Text fontSize={"lg"} fontWeight={"bold"}>
                         {user.name}
                       </Text>
-                      <Text fontSize={"sm"} color={"gray.500"}>
-                        {user.phoneNum}
-                      </Text>
                     </Box>
                   </Flex>
 
