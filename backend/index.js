@@ -4,6 +4,7 @@ const cors = require("cors");
 const http = require("http");
 const PORT = 5500;
 const { initSocket } = require("./socket/index.js");
+const { startStaleOnlineUsersJob } = require("./jobs/staleOnlineUsers.js");
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -25,7 +26,10 @@ const server = http.createServer(app);
 initSocket(server); // Initialize socket.io logic
 
 // Start server and connect to database
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Server started at http://localhost:${PORT}`);
-  connectDB();
+  await connectDB();
+
+  // Start background jobs only after DB is ready
+  startStaleOnlineUsersJob();
 });
