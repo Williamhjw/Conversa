@@ -1,6 +1,8 @@
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { S3Client } = require("@aws-sdk/client-s3");
+const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
 const Message = require("../Models/Message.js");
 const Conversation = require("../Models/Conversation.js");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {
   AWS_BUCKET_NAME,
   AWS_SECRET,
@@ -8,8 +10,6 @@ const {
   GEMINI_MODEL,
   GEMINI_API_KEY,
 } = require("../secrets.js");
-const { S3Client } = require("@aws-sdk/client-s3");
-const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
 
 const configuration = new GoogleGenerativeAI(GEMINI_API_KEY);
 const modelId = GEMINI_MODEL;

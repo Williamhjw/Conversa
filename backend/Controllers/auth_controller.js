@@ -1,9 +1,8 @@
-const User = require("../Models/User.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
-const Conversation = require("../Models/Conversation.js");
 const nodemailer = require("nodemailer");
+const User = require("../Models/User.js");
+const Conversation = require("../Models/Conversation.js");
 const { JWT_SECRET, EMAIL, PASSWORD } = require("../secrets.js");
 
 let mailTransporter = nodemailer.createTransport({

@@ -1,13 +1,13 @@
+const bcrypt = require("bcryptjs");
+const { S3Client } = require("@aws-sdk/client-s3");
+const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
+const User = require("../Models/User.js");
+const Conversation = require("../Models/Conversation.js");
 const {
   AWS_BUCKET_NAME,
   AWS_SECRET,
   AWS_ACCESS_KEY
 } = require("../secrets.js");
-const { S3Client } = require("@aws-sdk/client-s3");
-const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
-const User = require("../Models/User.js");
-const Conversation = require("../Models/Conversation.js");
-const bcrypt = require("bcryptjs");
 
 const getPresignedUrl = async (req, res) => {
   const filename = req.query.filename;

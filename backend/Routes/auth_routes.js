@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   register,
   login,
@@ -12,4 +13,5 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/getotp", sendotp);
 router.get("/me", fetchuser, authUser);
+
 module.exports = router;
