@@ -90,12 +90,10 @@ const getAiResponse = async (prompt, senderId, conversationId) => {
   // reverse currentMessages
   currentMessages = currentMessages.reverse();
 
-  console.log("Current messages for AI context:", currentMessages);
-
   try {
     const chat = ai.chats.create({
       model: GEMINI_MODEL,
-      history: history,
+      history: currentMessages,
       config: {
         temperature: 0.5,
         maxOutputTokens: 1024,

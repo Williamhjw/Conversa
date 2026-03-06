@@ -158,7 +158,7 @@ const MyChatList = (props) => {
       });
       await socket.emit("leave-chat", activeChatId);
 
-      socket.emit("join-chat", { roomId: chatid, userId: user._id });
+      socket.emit("join-chat", { roomId: chatid });
       setActiveChatId(chatid);
 
       const response = await fetch(`${hostName}/message/${chatid}`, {

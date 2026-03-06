@@ -85,7 +85,11 @@ const Login = (props) => {
 
         localStorage.setItem("token", resdata.authtoken);
         setUser(await resdata.user);
-        socket.emit("setup", await resdata.user._id);
+        // Update the socket handshake token then (re)connect so the backend
+        // JWT middleware accepts the connection before we emit setup.
+        socket.auth = { token: resdata.authtoken };
+        socket.connect();
+        socket.emit("setup");
         setIsAuthenticated(true);
         fetchData();
         navigator("/dashboard");

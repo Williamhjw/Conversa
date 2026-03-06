@@ -250,7 +250,6 @@ export const ChatArea = () => {
     const data = {
       text: messageText,
       conversationId: activeChatId,
-      senderId: user._id,
       imageUrl: file ? `${awsHost}${key}` : null,
     };
 

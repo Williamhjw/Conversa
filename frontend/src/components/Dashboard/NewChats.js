@@ -97,7 +97,6 @@ const NewChats = (props) => {
 
       socket.emit("join-chat", {
         roomId: data._id,
-        userId: user._id,
       });
 
       setUsers((users) => users.filter((user) => user._id !== receiverid));

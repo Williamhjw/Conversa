@@ -4,7 +4,14 @@ import io from "socket.io-client";
 
 const hostName = "http://localhost:5500"
 // const hostName = "https://chat-app-u2cq.onrender.com";
-var socket = io(hostName);
+
+// Socket is created with autoConnect: false so it doesn't attempt a
+// connection before we have a JWT to include in the handshake auth.
+// Call socket.connect() only after setting socket.auth.token.
+var socket = io(hostName, {
+  autoConnect: false,
+  auth: { token: localStorage.getItem("token") || "" },
+});
 
 const ChatState = (props) => {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -42,13 +49,15 @@ const ChatState = (props) => {
   };
 
   useEffect(() => {
-    socket.on("receiver-online", () => {
+    // The backend now includes { userId } in both events so the client can
+    // identify which conversation partner changed status.
+    socket.on("receiver-online", (data) => {
       setReceiver((prevReceiver) => ({ ...prevReceiver, isOnline: true }));
     });
   }, []);
 
   useEffect(() => {
-    socket.on("receiver-offline", () => {
+    socket.on("receiver-offline", (data) => {
       setReceiver((prevReceiver) => ({
         ...prevReceiver,
         isOnline: false,
@@ -73,7 +82,11 @@ const ChatState = (props) => {
           setUser(data);
           console.log("user fetched");
           setIsAuthenticated(true);
-          socket.emit("setup", await data._id);
+          // Attach the token to the socket handshake then connect.
+          // The backend JWT middleware will validate it before accepting the connection.
+          socket.auth = { token };
+          if (!socket.connected) socket.connect();
+          socket.emit("setup");
         }
       } catch (error) {
         console.log(error);

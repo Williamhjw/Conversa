@@ -24,6 +24,7 @@ const ProfileMenu = (props) => {
     setActiveChatId,
     setMessageList,
     setReceiver,
+    socket,
   } = context;
   const navigator = useNavigate();
 
@@ -35,6 +36,7 @@ const ProfileMenu = (props) => {
     setReceiver({});
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    socket.disconnect();
     setIsAuthenticated(false);
     console.log("logout");
     navigator("/");
