@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { S3Client } = require("@aws-sdk/client-s3");
 const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
@@ -36,7 +37,7 @@ const getPresignedUrl = async (req, res) => {
   try {
     const { url, fields } = await createPresignedPost(s3Client, {
       Bucket: AWS_BUCKET_NAME,
-      Key: `conversa/${userId}/${Math.random()}/${filename}`,
+      Key: `conversa/${userId}/${crypto.randomUUID()}/${filename}`,
       Conditions: [["content-length-range", 0, 5 * 1024 * 1024]],
       Fields: {
         success_action_status: "201",
@@ -74,7 +75,7 @@ const getNonFriendsList = async (req, res) => {
     const users = await User.find({
       _id: { $nin: conversations.flatMap((c) => c.members) },
       email: { $not: /bot$/ },
-    });
+    }).select("-password");
 
     res.json(users);
   } catch (error) {
