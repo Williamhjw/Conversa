@@ -1,6 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: ".env" });
 
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const MONGO_URI = process.env.MONGO_URI;
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,6 +14,7 @@ const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY;
 const AWS_SECRET = process.env.AWS_SECRET;
 
 module.exports = {
+  CORS_ORIGIN,
   MONGO_URI,
   MONGO_DB_NAME,
   JWT_SECRET,

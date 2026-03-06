@@ -26,10 +26,13 @@ const server = http.createServer(app);
 initSocket(server); // Initialize socket.io logic
 
 // Start server and connect to database
-server.listen(PORT, async () => {
-  console.log(`🚀 Server started at http://localhost:${PORT}`);
-  await connectDB();
-
-  // Start background jobs only after DB is ready
+const start = async () => {
+  await connectDB(); // connect first
+  server.listen(PORT, () => {
+    console.log(`🚀 Server started at http://localhost:${PORT}`);
+  });
+  // Start background jobs after DB is ready
   startStaleOnlineUsersJob();
-});
+};
+
+start();
