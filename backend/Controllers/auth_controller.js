@@ -134,6 +134,9 @@ const login = async (req, res) => {
           error: "Invalid otp",
         });
       }
+      if (!user.otpExpiry || user.otpExpiry < new Date()) {
+        return res.status(400).json({ error: "OTP expired" });
+      }
       user.otp = "";
       await user.save();
     } else {
@@ -193,6 +196,7 @@ const sendotp = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedOtp = await bcrypt.hash(otp.toString(), salt);
     user.otp = hashedOtp;
+    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
     await user.save();
 
     //delete otp after 5 minutes
