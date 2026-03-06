@@ -11,7 +11,7 @@ const createConversation = async (req, res) => {
     }
 
     const conv = await Conversation.findOne({
-      members: { $all: memberIds },
+      members: { $all: memberIds, $size: memberIds.length },
     }).populate("members", "-password");
 
     if (conv) {
@@ -55,6 +55,14 @@ const getConversation = async (req, res) => {
       });
     }
 
+    // Ensure the requesting user is a member
+    const isMember = conversation.members.some(
+      (m) => m._id.toString() === req.user.id
+    );
+    if (!isMember) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     res.status(200).json(conversation);
   } catch (error) {
     res.status(500).send("Internal Server Error");
@@ -67,7 +75,9 @@ const getConversationList = async (req, res) => {
   try {
     const conversationList = await Conversation.find({
       members: { $in: userId },
-    }).populate("members", "-password");
+    })
+      .populate("members", "-password")
+      .sort({ updatedAt: -1 });
 
     if (!conversationList) {
       return res.status(404).json({
@@ -81,10 +91,6 @@ const getConversationList = async (req, res) => {
         (member) => member.id !== userId
       );
     }
-
-    conversationList.sort((a, b) => {
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
 
     res.status(200).json(conversationList);
   } catch (error) {
