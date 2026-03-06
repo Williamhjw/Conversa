@@ -161,7 +161,7 @@ const MyChatList = (props) => {
       socket.emit("join-chat", { roomId: chatid, userId: user._id });
       setActiveChatId(chatid);
 
-      const response = await fetch(`${hostName}/message/${chatid}/${user._id}`, {
+      const response = await fetch(`${hostName}/message/${chatid}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

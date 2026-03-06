@@ -9,7 +9,7 @@ const {
 const fetchuser = require("../middleware/fetchUser.js");
 
 router.get("/presigned-url", fetchuser, getPresignedUrl);
-router.get("/:id/:userid", fetchuser, allMessage);
+router.get("/:id", fetchuser, allMessage);
 router.post("/delete", fetchuser, deletemesage);
 
 module.exports = router;
