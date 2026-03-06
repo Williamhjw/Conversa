@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 const Message = require("../Models/Message.js");
 const Conversation = require("../Models/Conversation.js");
 const {
@@ -6,9 +6,7 @@ const {
   GEMINI_API_KEY,
 } = require("../secrets.js");
 
-const configuration = new GoogleGenerativeAI(GEMINI_API_KEY);
-const modelId = GEMINI_MODEL;
-const model = configuration.getGenerativeModel({ model: modelId });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const allMessage = async (req, res) => {
   try {
@@ -83,33 +81,31 @@ const getAiResponse = async (prompt, senderId, conversationId) => {
     .limit(20);
 
   messagelist.forEach((message) => {
-    if (message.senderId == senderId) {
-      currentMessages.push({
-        role: "user",
-        parts: message.text,
-      });
-    } else {
-      currentMessages.push({
-        role: "model",
-        parts: message.text,
-      });
-    }
+    currentMessages.push({
+      role: message.senderId == senderId ? "user" : "model",
+      parts: [{ "text": message.text }],
+    });
   });
 
   // reverse currentMessages
   currentMessages = currentMessages.reverse();
 
+  console.log("Current messages for AI context:", currentMessages);
+
   try {
-    const chat = model.startChat({
-      history: currentMessages,
-      generationConfig: {
-        maxOutputTokens: 2000,
-      },
+    const chat = ai.chats.create({
+      model: GEMINI_MODEL,
+      history: history,
+      config: {
+        temperature: 0.5,
+        maxOutputTokens: 1024,
+      }
     });
 
-    const result = await chat.sendMessage(prompt);
-    const response = result.response;
-    var responseText = response.text();
+    const response = await chat.sendMessage({
+      message: prompt,
+    });
+    var responseText = response.text.trim();
 
     if (responseText.length < 1) {
       return null;
