@@ -4,7 +4,7 @@ const {
   getAiResponse,
   sendMessageHandler,
   deleteMessageHandler,
-} = require("../Controllers/message_controller.js");
+} = require("../Controllers/message-controller.js");
 
 // userSocketMap is Map<userId, Set<socketId>> injected from socket/index.js.
 // It is used to determine whether a user still has any open connections before
@@ -179,9 +179,25 @@ module.exports = (io, socket, userSocketMap) => {
 
       io.to(conversationId).emit("receive-message", message);
 
+      conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
+        if (unread.userId.toString() === receiverId.toString()) {
+          return { userId: unread.userId, count: unread.count + 1 };
+        }
+        return unread;
+      });
+
+      conversation.latestmessage = text || "sent an image";
+
       if (!isReceiverInsideChatRoom) {
         console.log("Emitting new message notification to:", receiverId.toString());
-        io.to(receiverId.toString()).emit("new-message-notification", message);
+        const senderInfo = conversation.members.find(
+          (m) => m._id.toString() === senderId
+        );
+        io.to(receiverId.toString()).emit("new-message-notification", {
+          message,
+          sender: senderInfo,
+          conversation: conversation
+        });
       }
     } catch (error) {
       console.error("Error in send-message handler:", error);
@@ -206,13 +222,36 @@ module.exports = (io, socket, userSocketMap) => {
   socket.on("delete-message", handleDeleteMessage);
 
   // ─── Typing indicators ─────────────────────────────────────────────────────
-  socket.on("typing", (data) => {
-    io.to(data.conversationId).emit("typing", data);
-  });
+  // Helper: emit a typing event to everyone in the conversation room, and also
+  // to the receiver's personal room if they are online but not currently viewing
+  // this conversation (so they can show a subtle indicator in the chat list).
+  const emitTypingEvent = (event, data) => {
+    const { conversationId, receiverId } = data;
 
-  socket.on("stop-typing", (data) => {
-    io.to(data.conversationId).emit("stop-typing", data);
-  });
+    // Always notify users already inside the room
+    io.to(conversationId).emit(event, data);
+
+    if (!receiverId) return;
+
+    // Check if receiver is online
+    const receiverSockets = userSocketMap.get(receiverId.toString());
+    if (!receiverSockets || receiverSockets.size === 0) return; // offline
+
+    // Check if ANY of their sockets are inside the conversation room
+    const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
+    const isInsideRoom =
+      conversationRoom &&
+      Array.from(receiverSockets).some((sid) => conversationRoom.has(sid));
+
+    if (!isInsideRoom) {
+      // Online but not viewing this chat — emit to their personal room
+      io.to(receiverId.toString()).emit(event, data);
+    }
+  };
+
+  socket.on("typing", (data) => emitTypingEvent("typing", data));
+
+  socket.on("stop-typing", (data) => emitTypingEvent("stop-typing", data));
 
   // ─── Disconnect ────────────────────────────────────────────────────────────
   // Only mark the user offline when ALL their sockets have disconnected

@@ -6,7 +6,7 @@ const {
   login,
   authUser,
   sendotp,
-} = require("../Controllers/auth_controller.js");
+} = require("../Controllers/auth-controller.js");
 const fetchuser = require("../middleware/fetchUser.js");
 
 router.post("/register", register);

@@ -19,6 +19,7 @@ const s3Client = new S3Client({
 });
 
 const getPresignedUrl = async (req, res) => {
+
   const filename = req.query.filename;
   const filetype = req.query.filetype;
 
@@ -37,7 +38,7 @@ const getPresignedUrl = async (req, res) => {
   try {
     const { url, fields } = await createPresignedPost(s3Client, {
       Bucket: AWS_BUCKET_NAME,
-      Key: `conversa/${userId}/${crypto.randomUUID()}/${filename}`,
+      Key: `conversa/${userId}/${crypto.randomUUID()}-${filename}`,
       Conditions: [["content-length-range", 0, 5 * 1024 * 1024]],
       Fields: {
         success_action_status: "201",

@@ -14,10 +14,10 @@ app.use(express.json({ limit: "50mb" }));
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
-app.use("/auth", require("./Routes/auth_routes.js"));
-app.use("/user", require("./Routes/userRoutes.js"));
-app.use("/message", require("./Routes/message_routes.js"));
-app.use("/conversation", require("./Routes/conversation_routes.js"));
+app.use("/auth", require("./Routes/auth-routes.js"));
+app.use("/user", require("./Routes/user-routes.js"));
+app.use("/message", require("./Routes/message-routes.js"));
+app.use("/conversation", require("./Routes/conversation-routes.js"));
 
 // Server setup
 const server = http.createServer(app);

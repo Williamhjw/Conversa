@@ -152,7 +152,7 @@ const sendMessageHandler = async (data) => {
     });
 
     // update conversation latest message and increment unread count of receiver by 1
-    conversation.latestmessage = text || "[image]";
+    conversation.latestmessage = text || "sent an image";
     conversation.unreadCounts.map((unread) => {
       if (unread.userId.toString() == receiverId.toString()) {
         unread.count += 1;
@@ -174,7 +174,7 @@ const sendMessageHandler = async (data) => {
         },
       ],
     });
-    conversation.latestmessage = text || "[image]";
+    conversation.latestmessage = text || "sent an image";
     await conversation.save();
     return message;
   }

@@ -7,7 +7,7 @@ const {
   getOnlineStatus,
   getNonFriendsList,
   updateprofile,
-} = require("../Controllers/userController.js");
+} = require("../Controllers/user-controller.js");
 
 router.put("/update", fetchuser, updateprofile);
 router.get("/online-status/:id", fetchuser, getOnlineStatus);

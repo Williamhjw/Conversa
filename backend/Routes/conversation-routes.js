@@ -5,7 +5,7 @@ const {
   createConversation,
   getConversation,
   getConversationList,
-} = require("../Controllers/conversation_controller.js");
+} = require("../Controllers/conversation-controller.js");
 const fetchuser = require("../middleware/fetchUser.js");
 
 router.post("/", fetchuser, createConversation);
