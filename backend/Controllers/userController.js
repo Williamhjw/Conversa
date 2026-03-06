@@ -9,6 +9,14 @@ const {
   AWS_ACCESS_KEY
 } = require("../secrets.js");
 
+const s3Client = new S3Client({
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY,
+    secretAccessKey: AWS_SECRET,
+  },
+  region: "ap-south-1",
+});
+
 const getPresignedUrl = async (req, res) => {
   const filename = req.query.filename;
   const filetype = req.query.filetype;
@@ -24,13 +32,6 @@ const getPresignedUrl = async (req, res) => {
   }
 
   const userId = req.user.id;
-  const s3Client = new S3Client({
-    credentials: {
-      accessKeyId: AWS_ACCESS_KEY,
-      secretAccessKey: AWS_SECRET,
-    },
-    region: "ap-south-1",
-  });
 
   try {
     const { url, fields } = await createPresignedPost(s3Client, {
