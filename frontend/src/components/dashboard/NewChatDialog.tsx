@@ -249,7 +249,7 @@ export default function NewChatDialog({ open, onOpenChange }: NewChatDialogProps
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-4 pt-4 pb-3 shrink-0">
+                <DialogHeader className="px-4 pt-7 pb-3 shrink-0">
                     <DialogTitle>New Conversation</DialogTitle>
                 </DialogHeader>
 
