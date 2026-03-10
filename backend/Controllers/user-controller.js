@@ -66,28 +66,87 @@ const getOnlineStatus = async (req, res) => {
   }
 };
 
+const PINNED_EMAIL = "pmsoni2016@gmail.com";
+
 const getNonFriendsList = async (req, res) => {
   try {
-    // find all friends(all other members in conversations) and user whose email not endswith bot
-    const conversations = await Conversation.find({
-      members: { $in: [req.user.id] },
-    });
+    const search = (req.query.search || "").trim();
+    const sort   = req.query.sort   || "name_asc";   // name_asc | name_desc | last_seen_recent | last_seen_oldest
+    const page   = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip   = (page - 1) * limit;
 
-    const users = await User.find({
-      _id: { $nin: conversations.flatMap((c) => c.members) },
+    // IDs already in a conversation with the requester (including the requester themselves)
+    const conversations = await Conversation.find({ members: { $in: [req.user.id] } });
+    const excludedIds = conversations.flatMap((c) => c.members);
+
+    // Base filter: not in any conversation + not a bot
+    const baseFilter = {
+      _id:   { $nin: excludedIds },
       email: { $not: /bot$/ },
-    }).select("-password");
+    };
 
-    res.json(users);
+    // Search filter
+    if (search) {
+      baseFilter.$or = [
+        { name:  { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Sort map
+    const sortMap = {
+      name_asc:          { name:     1 },
+      name_desc:         { name:    -1 },
+      last_seen_recent:  { lastSeen: -1 },
+      last_seen_oldest:  { lastSeen:  1 },
+    };
+    const mongoSort = sortMap[sort] || sortMap.name_asc;
+
+    // When no search: handle pinned user separately so they always appear at top of page 1
+    let pinnedUser = null;
+    if (!search) {
+      pinnedUser = await User.findOne({
+        ...baseFilter,
+        email: PINNED_EMAIL,
+      }).select("-password");
+    }
+
+    // Exclude pinned user from main paginated query
+    const mainFilter = pinnedUser
+      ? { ...baseFilter, _id: { $nin: [...excludedIds, pinnedUser._id] } }
+      : baseFilter;
+
+    // Adjust skip/limit on page 1 to account for the pinned slot
+    const effectiveLimit = (pinnedUser && page === 1) ? limit - 1 : limit;
+    const effectiveSkip  = (pinnedUser && page > 1)  ? skip  - 1 : skip;
+
+    const [users, total] = await Promise.all([
+      User.find(mainFilter).sort(mongoSort).skip(Math.max(0, effectiveSkip)).limit(effectiveLimit).select("-password"),
+      User.countDocuments(mainFilter),
+    ]);
+
+    // Total including the pinned user
+    const grandTotal = total + (pinnedUser ? 1 : 0);
+    const hasMore    = skip + limit < grandTotal;
+
+    res.json({
+      users,
+      pinnedUser: page === 1 ? pinnedUser : null,
+      hasMore,
+      total: grandTotal,
+      page,
+    });
   } catch (error) {
-    res.status(500).send("Internal Server Error");
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 const updateprofile = async (req, res) => {
   try {
     const dbuser = await User.findById(req.user.id);
-    const allowedUpdates = { name: req.body.name, about: req.body.about };
+    const allowedUpdates = { name: req.body.name, about: req.body.about, profilePic: req.body.profilePic };
 
     if (req.body.newpassword) {
       const passwordCompare = await bcrypt.compare(
