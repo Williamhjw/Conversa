@@ -115,6 +115,12 @@ export const conversationApi = {
             headers: headers(),
             body: JSON.stringify({ members: memberIds }),
         }).then(handleResponse),
+
+    togglePin: (id: string) =>
+        fetch(`${API_BASE}/conversation/${id}/pin`, {
+            method: "POST",
+            headers: headers(),
+        }).then((res) => handleResponse<{ isPinned: boolean }>(res)),
 };
 
 /* ─── messages ─────────────────────────────────────────────────────────── */
@@ -144,6 +150,17 @@ export const messageApi = {
             method: "POST",
             headers: headers(),
         }).then(handleResponse),
+
+    toggleStar: (messageId: string) =>
+        fetch(`${API_BASE}/message/${messageId}/star`, {
+            method: "POST",
+            headers: headers(),
+        }).then((res) => handleResponse<{ isStarred: boolean; starredBy: string[] }>(res)),
+
+    getStarred: <T = unknown>() =>
+        fetch(`${API_BASE}/message/starred`, {
+            headers: headers(),
+        }).then((res) => handleResponse<T>(res)),
 };
 
 /* ─── users ────────────────────────────────────────────────────────────── */

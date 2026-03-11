@@ -1,4 +1,5 @@
 const Conversation = require("../Models/Conversation.js");
+const User = require("../Models/User.js");
 
 /**
  * Sanitizes a populated member document when viewed by someone whom that
@@ -108,6 +109,9 @@ const getConversationList = async (req, res) => {
   const userId = req.user.id;
 
   try {
+    const currentUser = await User.findById(userId).select("pinnedConversations");
+    const pinnedSet = new Set((currentUser.pinnedConversations || []).map((id) => id.toString()));
+
     const conversationList = await Conversation.find({
       members: { $in: userId },
     })
@@ -115,21 +119,57 @@ const getConversationList = async (req, res) => {
       .sort({ updatedAt: -1 });
 
     if (!conversationList) {
-      return res.status(404).json({
-        error: "No conversation found",
-      });
+      return res.status(404).json({ error: "No conversation found" });
     }
 
-    // remove current user from members, sanitize blocked profiles
+    // Build response: annotate isPinned
+    let result = [];
     for (let i = 0; i < conversationList.length; i++) {
+      const convId = conversationList[i]._id.toString();
+
       const conv = conversationList[i].toObject();
       conv.members = conversationList[i].members
         .filter((member) => member.id !== userId)
         .map((member) => sanitizeForRequester(member, userId));
-      conversationList[i] = conv;
+      conv.isPinned = pinnedSet.has(convId);
+      result.push(conv);
     }
 
-    res.status(200).json(conversationList);
+    // Sort: pinned first, then by updatedAt (already sorted by mongo)
+    result.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Internal Server Error");
+  }
+};
+
+const togglePin = async (req, res) => {
+  const userId = req.user.id;
+  const convId = req.params.id;
+
+  try {
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+
+    const isMember = conversation.members.some((m) => m.toString() === userId);
+    if (!isMember) return res.status(403).json({ error: "Forbidden" });
+
+    const user = await User.findById(userId).select("pinnedConversations");
+    const isPinned = user.pinnedConversations.some((id) => id.toString() === convId);
+
+    if (isPinned) {
+      await User.findByIdAndUpdate(userId, { $pull: { pinnedConversations: convId } });
+      return res.status(200).json({ isPinned: false });
+    } else {
+      await User.findByIdAndUpdate(userId, { $addToSet: { pinnedConversations: convId } });
+      return res.status(200).json({ isPinned: true });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).send("Internal Server Error");
@@ -140,4 +180,5 @@ module.exports = {
   createConversation,
   getConversation,
   getConversationList,
+  togglePin,
 };

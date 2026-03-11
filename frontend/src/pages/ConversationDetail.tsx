@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useEffect, useRef, useCallback, useState, useMemo } from "react"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
 import { useChat, type Message } from "@/hooks/use-chat"
 import { useConversations } from "@/hooks/use-conversation"
@@ -111,6 +111,7 @@ function DateDivider({ date }: { date: string }) {
 export default function ConversationDetail() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
     const { user } = useAuth()
     const {
         receiver, setReceiver,
@@ -123,21 +124,32 @@ export default function ConversationDetail() {
     const { setChatList } = useConversations()
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const isInitialLoadRef = useRef(true)
+    // Tracks whether the first scroll (to bottom or to highlight) has been done
+    const hasInitiallyScrolledRef = useRef(false)
+    // Tracks the last known message count to detect genuine additions vs. in-place updates
+    const prevMessageCountRef = useRef(0)
     // Buffer messages-seen events that arrive before the message list is populated
-    const pendingSeenRef = useRef<Array<{ seenBy: string; seenAt: string }>>([])
+    const pendingSeenRef = useRef<{ seenBy: string; seenAt: string }[]>([])
 
     // Streaming bot response state
     const [streamingBot, setStreamingBot] = useState<{ conversationId: string; tempId: string; text: string } | null>(null)
 
+    // Highlighted message (jump-to from starred messages)
+    const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+
     // Block status
-    const [blockStatus, setBlockStatus] = useState<{ iBlockedThem: boolean; theyBlockedMe: boolean }>({ iBlockedThem: false, theyBlockedMe: false })
+    const [fetchedBlockStatus, setBlockStatus] = useState<{ iBlockedThem: boolean; theyBlockedMe: boolean }>({ iBlockedThem: false, theyBlockedMe: false })
+    // When receiver is absent or a bot, always treat block status as cleared so we
+    // don't have to call setState synchronously inside the effect (which triggers
+    // cascading renders and violates react-hooks/set-state-in-effect).
+    const blockStatus = useMemo(
+        () => (!receiver || receiver.isBot ? { iBlockedThem: false, theyBlockedMe: false } : fetchedBlockStatus),
+        [receiver, fetchedBlockStatus]
+    )
 
     // ── fetch block status whenever the receiver changes ─────────────────
     useEffect(() => {
-        if (!receiver || receiver.isBot) {
-            setBlockStatus({ iBlockedThem: false, theyBlockedMe: false })
-            return
-        }
+        if (!receiver || receiver.isBot) return
         userApi.getBlockStatus(receiver._id)
             .then((status) => setBlockStatus(status))
             .catch(() => {/* silent — non-critical */})
@@ -223,6 +235,8 @@ export default function ConversationDetail() {
         setActiveChatId(id)
         pendingSeenRef.current = []
         isInitialLoadRef.current = true
+        hasInitiallyScrolledRef.current = false
+        prevMessageCountRef.current = 0
 
         Promise.all([
             conversationApi.get<Conversation>(id),
@@ -268,17 +282,45 @@ export default function ConversationDetail() {
             .finally(() => setIsChatLoading(false))
     }, [id, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // ── scroll/highlight when opened from starred messages ─────────────────
+    useEffect(() => {
+        const targetId = searchParams.get("highlight")
+        if (!targetId || messageList.length === 0) return
+        // Give the DOM a moment to render, then scroll
+        requestAnimationFrame(() => {
+            const el = document.querySelector(`[data-message-id="${targetId}"]`) as HTMLElement | null
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" })
+                setHighlightedMessageId(targetId)
+                // Remove highlight after animation completes
+                setTimeout(() => setHighlightedMessageId(null), 2200)
+            }
+        })
+    }, [searchParams, messageList])
+
     // ── always scroll to bottom when messages change ─────────────────────
     useEffect(() => {
         if (messageList.length === 0) return
-        if (isInitialLoadRef.current) {
-            // first batch: snap instantly (no animation flicker)
-            scrollToBottom("instant")
+
+        const prevCount = prevMessageCountRef.current
+        const currentCount = messageList.length
+        prevMessageCountRef.current = currentCount
+
+        // In-place update (seenBy, softDeleted, starredBy, etc.) — don't scroll
+        if (currentCount === prevCount) return
+
+        if (!hasInitiallyScrolledRef.current) {
+            // First batch: skip auto-scroll if we're jumping to a highlighted message
+            hasInitiallyScrolledRef.current = true
             isInitialLoadRef.current = false
-        } else {
-            scrollToBottom("smooth")
+            if (!searchParams.get("highlight")) {
+                scrollToBottom("instant")
+            }
+            return
         }
-    }, [messageList, scrollToBottom])
+        // A new message was added — scroll to bottom
+        scrollToBottom("smooth")
+    }, [messageList, scrollToBottom]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── join / leave socket room ─────────────────────────────────────────
     useEffect(() => {
@@ -305,8 +347,13 @@ export default function ConversationDetail() {
                         ? { ...c, latestmessage: msg.text ?? "sent an image", updatedAt: msg.createdAt }
                         : c
                 )
-                const [bumped] = updated.splice(idx, 1)
-                return [bumped, ...updated]
+                // Keep pinned conversations first, then sort the rest by updatedAt
+                return [
+                    ...updated.filter((c) => c.isPinned),
+                    ...updated.filter((c) => !c.isPinned).sort(
+                        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    ),
+                ]
             })
             // scroll is handled by the messageList effect
         }
@@ -447,6 +494,22 @@ export default function ConversationDetail() {
         [user, id, setMessageList]
     )
 
+    // ── star handler ──────────────────────────────────────────────────────
+    const handleStar = useCallback(
+        async (messageId: string) => {
+            try {
+                const { isStarred, starredBy } = await messageApi.toggleStar(messageId)
+                setMessageList((prev) =>
+                    prev.map((m) => m._id === messageId ? { ...m, starredBy } : m)
+                )
+                toast.success(isStarred ? "Message starred" : "Message unstarred")
+            } catch {
+                toast.error("Failed to update star.")
+            }
+        },
+        [setMessageList]
+    )
+
     // ── clear chat handler ────────────────────────────────────────────────
     const handleClearChat = useCallback(async () => {
         if (!id) return
@@ -522,10 +585,13 @@ export default function ConversationDetail() {
                                 isMine={isMine}
                                 isBot={receiver?.isBot && !isMine}
                                 receiverId={receiver?._id ?? ""}
+                                myId={user?._id ?? ""}
                                 onDelete={handleDelete}
+                                onStar={handleStar}
                                 selectMode={selectMode}
                                 selected={selectedIds.has(msg._id)}
                                 onToggleSelect={handleToggleSelect}
+                                highlighted={highlightedMessageId === msg._id}
                             />
                         )
                     })

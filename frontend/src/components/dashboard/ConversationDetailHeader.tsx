@@ -128,7 +128,6 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                                 </DropdownMenuItem>
                             )
                         )}
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => setClearOpen(true)}
                             variant="destructive"

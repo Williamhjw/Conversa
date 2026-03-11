@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { LogOut, MessagesSquare, Settings } from "lucide-react"
+import { LogOut, MessagesSquare, Settings, Star } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -25,7 +25,13 @@ const NAV_ITEMS = [
         href: "/user/conversations",
         icon: MessagesSquare,
         tooltip: "Conversations",
-    }
+    },
+    {
+        label: "Starred Messages",
+        href: "/user/starred",
+        icon: Star,
+        tooltip: "Starred Messages",
+    },
 ]
 
 export default function DashboardSidebar() {

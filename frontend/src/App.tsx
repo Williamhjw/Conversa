@@ -11,6 +11,7 @@ import ConversationDetail from "./pages/ConversationDetail";
 import User from "./pages/User";
 import ConversationLayout from "./components/layout/ConversationLayout";
 import UserProfile from "./pages/UserProfile";
+import StarredMessages from "./pages/StarredMessages";
 
 export function App() {
 
@@ -34,6 +35,7 @@ export function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/user" element={<User />} />
           <Route path="/user/profile" element={<UserProfile />} />
+          <Route path="/user/starred" element={<StarredMessages />} />
           <Route element={<ConversationLayout />}>
             <Route path="/user/conversations" element={<Conversations />} />
             <Route path="/user/conversations/:id" element={<ConversationDetail />} />

@@ -310,6 +310,67 @@ const bulkHide = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/message/:id/star
+ * Toggle star for the requesting user on a single message.
+ * Returns { isStarred: boolean }.
+ */
+const toggleStar = async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id);
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    // Ensure the requester is a member of the conversation
+    const conversation = await Conversation.findById(message.conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    const isMember = conversation.members.some((m) => m.toString() === req.user.id);
+    if (!isMember) return res.status(403).json({ error: 'Forbidden' });
+
+    const alreadyStarred = message.starredBy.some((id) => id.toString() === req.user.id);
+    if (alreadyStarred) {
+      message.starredBy = message.starredBy.filter((id) => id.toString() !== req.user.id);
+    } else {
+      message.starredBy.push(req.user.id);
+    }
+    await message.save();
+    res.status(200).json({ isStarred: !alreadyStarred, starredBy: message.starredBy });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * GET /api/message/starred
+ * Returns all messages starred by the requesting user, newest first.
+ * Each message includes a populated conversationId so the client knows
+ * which chat to navigate to.
+ */
+const getStarredMessages = async (req, res) => {
+  try {
+    const messages = await Message.find({
+      starredBy: req.user.id,
+      hiddenFrom: { $ne: req.user.id },
+      softDeleted: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'conversationId',
+        select: 'members',
+        populate: {
+          path: 'members',
+          select: '-password',
+        },
+      })
+      .lean();
+
+    res.json(messages);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   allMessage,
   streamAiResponse,
@@ -318,4 +379,6 @@ module.exports = {
   clearChat,
   sendMessageHandler,
   deleteMessageHandler,
+  toggleStar,
+  getStarredMessages,
 };

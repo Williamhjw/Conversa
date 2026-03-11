@@ -76,9 +76,13 @@ export default function NotificationListener() {
                     }
                 })
 
-                // move bumped conversation to the top
-                const [bumped] = updated.splice(idx, 1)
-                return [bumped, ...updated]
+                // Keep pinned conversations first, then sort the rest by updatedAt
+                return [
+                    ...updated.filter((c) => c.isPinned),
+                    ...updated.filter((c) => !c.isPinned).sort(
+                        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    ),
+                ]
             })
 
             // ── skip toast + sound if the user is already viewing this chat ──

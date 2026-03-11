@@ -1,7 +1,7 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle } from "lucide-react"
+import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,21 +20,27 @@ interface Props {
     isMine: boolean
     isBot?: boolean
     receiverId: string
+    myId: string
     onDelete: (messageId: string, scope: "me" | "everyone") => void
+    onStar: (messageId: string) => void
     // select-mode props
     selectMode?: boolean
     selected?: boolean
     onToggleSelect?: (id: string) => void
+    // highlight / jump-to
+    highlighted?: boolean
 }
 
 function formatTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-export default function SingleMessage({ message, isMine, isBot, receiverId, onDelete, selectMode, selected, onToggleSelect }: Props) {
+export default function SingleMessage({ message, isMine, isBot, receiverId, myId, onDelete, onStar, selectMode, selected, onToggleSelect, highlighted }: Props) {
     const [hovered, setHovered] = useState(false)
     const [copied, setCopied] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
+
+    const isStarred = message.starredBy?.includes(myId)
 
     const handleCopy = () => {
         if (message.text) {
@@ -51,11 +57,13 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, onDe
     return (
         <>
             <div
+                data-message-id={message._id}
                 className={cn(
                     "group flex items-end gap-2",
                     isMine ? "ml-auto flex-row-reverse max-w-[75%]" : isBot ? "mr-auto max-w-[85%]" : "mr-auto max-w-[75%]",
                     selectMode && "cursor-pointer",
-                    selectMode && selected && (isMine ? "pr-2" : "pl-2")
+                    selectMode && selected && (isMine ? "pr-2" : "pl-2"),
+                    highlighted && "animate-highlight rounded-xl"
                 )}
                 onMouseEnter={() => { if (!selectMode) setHovered(true) }}
                 onMouseLeave={() => { if (!selectMode) setHovered(false) }}
@@ -141,6 +149,19 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, onDe
                         hovered ? "opacity-100" : "opacity-0 pointer-events-none"
                     )}
                 >
+                    {/* Star button — always available */}
+                    {!message.softDeleted && (
+                        <button
+                            onClick={() => onStar(message._id)}
+                            title={isStarred ? "Unstar" : "Star"}
+                            className={cn(
+                                "flex items-center justify-center size-7 rounded-full bg-muted hover:bg-accent transition-colors",
+                                isStarred && "text-yellow-400"
+                            )}
+                        >
+                            <Star className={cn("size-3.5", isStarred && "fill-yellow-400")} />
+                        </button>
+                    )}
                     {message.text && !message.softDeleted && (
                         <button
                             onClick={handleCopy}

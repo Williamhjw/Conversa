@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Search, MessageCircle, Bot, SquarePen, ChevronDown, Trash2, Ban } from "lucide-react"
+import { Search, MessageCircle, Bot, SquarePen, ChevronDown, Trash2, ShieldX, Pin, PinOff } from "lucide-react"
 import { useConversations, type Conversation } from "@/hooks/use-conversation"
 import { useAuth } from "@/hooks/use-auth"
 import { useChat } from "@/hooks/use-chat"
@@ -15,7 +15,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { userApi, messageApi } from "@/lib/api"
+import { userApi, messageApi, conversationApi } from "@/lib/api"
 import { toast } from "sonner"
 import socket from "@/lib/socket"
 import type { User } from "@/hooks/use-auth"
@@ -73,10 +73,11 @@ interface RowProps {
     setOpenDropdownId: (id: string | null) => void
     onToggleBlock: (userId: string, userName: string, isBlocked: boolean) => Promise<void>
     onClearChat: (convId: string) => Promise<void>
+    onTogglePin: (convId: string) => Promise<void>
     blockedUsers: Set<string>
 }
 
-function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, blockedUsers }: RowProps) {
+function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, blockedUsers }: RowProps) {
     const other = getOtherMember(conv, myId)
     const unread = conv.unreadCounts.find((u) => u.userId === myId)?.count ?? 0
     const name = other?.name ?? "Unknown"
@@ -85,6 +86,7 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
         : conv.latestmessage || "Start a conversation"
     const dropdownOpen = openDropdownId === conv._id
     const isBlocked = other ? blockedUsers.has(other._id) : false
+    const isPinned = conv.isPinned
 
     return (
         <div className="relative group">
@@ -109,14 +111,19 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem
-                                onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
-                                variant={isBlocked ? "default" : "destructive"}
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onTogglePin(conv._id) }}
                             >
-                                {isBlocked ? <Ban className="size-4" /> : <Ban className="size-4" />}
-                                {isBlocked ? "Unblock user" : "Block user"}
+                                {isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+                                {isPinned ? "Unpin" : "Pin"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
+                                variant="destructive"
+                            >
+                                <ShieldX className="size-4" />
+                                {isBlocked ? "Unblock user" : "Block user"}
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onClearChat(conv._id) }}
                                 variant="destructive"
@@ -158,9 +165,12 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                 <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-1">
                         <span className="truncate text-sm font-medium leading-tight">{name}</span>
-                        <span className={`shrink-0 text-[10px] text-muted-foreground group-hover:mr-5 ${dropdownOpen ? "mr-5" : "mr-0"}`}>
-                            {relativeTime(conv.updatedAt)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                            {isPinned && <Pin className="size-2.5 text-primary shrink-0" />}
+                            <span className={`shrink-0 text-[10px] text-muted-foreground group-hover:mr-5 ${dropdownOpen ? "mr-5" : "mr-0"}`}>
+                                {relativeTime(conv.updatedAt)}
+                            </span>
+                        </div>
                     </div>
                     <div className="flex items-center justify-between gap-1 mt-1">
                         <p
@@ -229,6 +239,25 @@ export default function ConversationsList() {
             toast.success("Chat cleared")
         } catch {
             toast.error("Failed to clear chat")
+        }
+    }
+
+    // pin / unpin a conversation
+    const handleTogglePin = async (convId: string) => {
+        try {
+            const { isPinned } = await conversationApi.togglePin(convId)
+            setChatList((prev) => {
+                const updated = prev.map((c) =>
+                    c._id === convId ? { ...c, isPinned } : c
+                )
+                // re-sort: pinned first
+                return [...updated.filter((c) => c.isPinned && c._id === convId), ...updated.filter((c) => c.isPinned && c._id !== convId), ...(updated.filter((c) => !c.isPinned).sort(
+                    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()))]
+            })
+            setOpenDropdownId(null)
+            toast.success(isPinned ? "Conversation pinned" : "Conversation unpinned")
+        } catch {
+            toast.error("Failed to update pin")
         }
     }
 
@@ -323,6 +352,7 @@ export default function ConversationsList() {
                             setOpenDropdownId={setOpenDropdownId}
                             onToggleBlock={handleToggleBlock}
                             onClearChat={handleClearChatRow}
+                            onTogglePin={handleTogglePin}
                             blockedUsers={blockedUsers}
                         />
                     ))

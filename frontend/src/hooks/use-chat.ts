@@ -12,6 +12,8 @@ export type Message = {
     seenBy: Array<{ user: string; seenAt: string }>;
     hiddenFrom: string[];
     softDeleted: boolean;
+    starredBy?: string[];
+    replyTo?: string | null;
     createdAt: string;
     updatedAt: string;
 };
