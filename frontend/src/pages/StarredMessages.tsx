@@ -114,11 +114,11 @@ function StarredMessageCard({
             </div>
 
             {/* Actions */}
-            <div className={cn("flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity")}>
+            <div className={cn("flex items-center gap-1 shrink-0")}>
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
+                    className="size-5 text-muted-foreground hover:text-destructive"
                     title="Unstar"
                     onClick={(e) => { e.stopPropagation(); onUnstar(msg._id) }}
                 >
@@ -127,7 +127,7 @@ function StarredMessageCard({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="size-7 text-muted-foreground hover:text-primary"
+                    className="size-5 text-muted-foreground hover:text-primary"
                     title="Go to message"
                     onClick={() => onNavigate(conversationId, msg._id)}
                 >
