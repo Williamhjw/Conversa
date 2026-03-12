@@ -1,9 +1,10 @@
 
 import { useState, useRef } from "react"
-import { Camera, Pencil, Check, X, Eye, EyeOff, Loader2, Trash2 } from "lucide-react"
+import { Camera, Pencil, Check, X, Eye, EyeOff, Loader2, Trash2, Sun, Moon, Monitor } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
 import { userApi } from "@/lib/api"
+import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -149,6 +150,7 @@ function PasswordInput({
 /* ─── main page ─────────────────────────────────────────────────────────── */
 const UserProfile = () => {
     const { user, setUser } = useAuth()
+    const { theme, setTheme } = useTheme()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [avatarUploading, setAvatarUploading] = useState(false)
 
@@ -363,6 +365,41 @@ const UserProfile = () => {
                                 {pwSaving ? <><Loader2 className="size-4 mr-2 animate-spin" /> Saving…</> : "Change Password"}
                             </Button>
                         </form>
+                    </CardContent>
+                </Card>
+
+                {/* ── Appearance card ───────────────────────────────────── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Appearance</CardTitle>
+                        <CardDescription>
+                            Choose your preferred color theme. You can also press{" "}
+                            <kbd className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-mono font-medium text-muted-foreground">D</kbd>{" "}
+                            anywhere (outside a text field) to quickly toggle between light and dark.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-3 gap-3">
+                            {([
+                                { value: "light", label: "Light", Icon: Sun },
+                                { value: "dark",  label: "Dark",  Icon: Moon },
+                                { value: "system", label: "System", Icon: Monitor },
+                            ] as const).map(({ value, label, Icon }) => (
+                                <button
+                                    key={value}
+                                    onClick={() => setTheme(value)}
+                                    className={[
+                                        "flex flex-col items-center gap-2 rounded-lg border-2 px-3 py-4 text-sm font-medium transition-colors",
+                                        theme === value
+                                            ? "border-primary bg-primary/10 text-primary"
+                                            : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                                    ].join(" ")}
+                                >
+                                    <Icon className="size-5" />
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
 
