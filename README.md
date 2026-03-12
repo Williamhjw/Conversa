@@ -11,8 +11,9 @@
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-%2306B6D4.svg?style=flat&logo=tailwindcss&logoColor=white)
 ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-FF9900?style=flat&logo=amazons3&logoColor=white)
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-AI-4285F4?style=flat&logo=google&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)
 
-A full-stack, production-grade real-time chat application built with the MERN stack and Socket.IO. Features include one-on-one messaging, a personalized AI chatbot powered by Google Gemini, image sharing via AWS S3, and a fully responsive dark/light UI built with React 19, TypeScript, Tailwind CSS v4, and shadcn/ui components.
+A full-stack, production-grade real-time chat application built with the MERN stack and Socket.IO. Features include one-on-one messaging, a personalised AI chatbot powered by Google Gemini, image sharing via AWS S3, email verification, email notifications, and a fully responsive dark/light UI built with React 19, TypeScript, Tailwind CSS v4, and shadcn/ui components.
 
 </div>
 
@@ -29,22 +30,28 @@ A full-stack, production-grade real-time chat application built with the MERN st
 - [Socket.IO Events](#socketio-events)
 - [Environment Variables](#environment-variables)
 - [Getting Started](#getting-started)
+  - [Docker (recommended)](#docker-recommended)
+  - [Manual (local development)](#manual-local-development)
 - [Scripts](#scripts)
 - [Security Design](#security-design)
 - [Background Jobs](#background-jobs)
-- [Roadmap](#roadmap)
 - [License](#license)
 
 ---
 
 ## Features
 
-### Authentication
+### Authentication & Email Verification
 - **Register / Login** with email and password (bcrypt hashed, JWT issued with 7-day expiry)
-- **OTP Login** — request a one-time password sent to email via Nodemailer / Gmail SMTP; time-limited, bcrypt-stored
+- **OTP Login** — request a one-time password sent via Nodemailer / Gmail SMTP; time-limited (5 min), bcrypt-stored
+- **Email verification** — after registration (or on first login for existing accounts), users must verify their email with a 6-digit OTP before accessing the dashboard; unverified users are always redirected to `/verify-email`
 - **Persistent sessions** — JWT stored in `localStorage`; `auth-token` header used on every API call
-- **Profile management** — update name, about, profile picture, and change password (old password verification required)
-- **Profile pictures** — uploaded directly from the browser to AWS S3 via pre-signed POST URLs (max 5 MB, images only)
+- **Account deletion** — soft-anonymises the account (clears name, email, bio, credentials) while preserving conversation history for other participants
+
+### Profile Management
+- Update name, about text, and profile picture
+- Change password (old password verification required)
+- Profile pictures uploaded directly from the browser to AWS S3 via pre-signed POST URLs (max 5 MB, images only); removal resets to a generated ui-avatars.com URL
 
 ### Messaging
 - **Real-time one-on-one chat** over Socket.IO
@@ -52,46 +59,50 @@ A full-stack, production-grade real-time chat application built with the MERN st
 - **Reply to message** — `replyTo` reference stored per message; displayed as quoted context in the UI
 - **Delete for me** — hard-removes a message from your view only (appended to `hiddenFrom`)
 - **Delete for everyone** — soft-delete sets `softDeleted: true`; message shows as *"This message was deleted"* tombstone for all members
-- **Bulk hide** — hide multiple messages at once for yourself
+- **Bulk hide** — hide multiple selected messages at once for yourself
 - **Clear chat** — hide the entire conversation history from your view with a single action
 - **Star / unstar messages** — bookmark individual messages; view all starred messages in a dedicated page
-- **Seen receipts** — `seenBy` array tracks who read each message and when; updated on both room join and message load
-- **Unread counts** — per-user unread counters maintained in the `Conversation` document, reset on room join
-- **Latest message preview** — `latestmessage` field on `Conversation` keeps the chat list up to date
+- **Seen receipts** — `seenBy` array tracks who read each message and when
+- **Unread counts** — per-user counters maintained on the `Conversation` document, reset on room join
+- **Latest message preview** — `latestmessage` field keeps the chat list up to date in real time
 
 ### AI Chatbot
 - Every user gets a **personal AI Chatbot** conversation created automatically at registration
-- Powered by **Google Gemini** (via `@google/genai`) with configurable model and temperature
+- Powered by **Google Gemini** (via `@google/genai`) with configurable model
 - **Streaming responses** — bot replies are streamed chunk-by-chunk over Socket.IO (`bot-chunk`, `bot-done`) so text appears progressively
-- **Context-aware** — last 19 text messages are sent as chat history on every request, giving the bot memory of the conversation
+- **Context-aware** — last 19 text messages sent as chat history on every request, giving the bot memory of the conversation
 - **Typing indicator** — bot emits `typing` / `stop-typing` while generating
 - **Rollback on error** — if the Gemini stream fails, the user message is deleted and `bot-error` is emitted
 
+### Email Notifications
+- When a message is received and the recipient is **completely offline** (no open sockets), a branded HTML email is sent with a message preview and a deep-link back to the conversation
+- **Fire-and-forget** — the email is never awaited in the socket path, adding zero latency to message delivery
+- Users can **toggle email notifications** on/off from the Settings page (`/user/profile`); preference is persisted to the database
+
 ### Real-Time Presence & Notifications
-- **Online / Offline status** — `isOnline` flag updated on connect/disconnect; broadcast to all conversation partners
-- **Last seen** — timestamp recorded on disconnect and served via API
+- **Online / Offline status** — `isOnline` flag updated on socket connect/disconnect; broadcast to all conversation partners
+- **Last seen** — timestamp recorded on disconnect, served via API
 - **Multi-device / multi-tab aware** — `Map<userId, Set<socketId>>` tracks all open sockets; user is only marked offline when their *last* socket closes
-- **Stale online cleanup** — background job runs every hour to force-offline users whose socket disconnect was missed (e.g. server crash)
-- **Typing animation** — `typing` / `stop-typing` events broadcast to the conversation room *and* to the receiver's personal room if they are online but not in the chat
-- **Push notification** — `new-message-notification` event sent to receiver's personal room when they are not inside the conversation
+- **Stale online cleanup** — background cron job runs every hour to force-offline users whose socket disconnect was missed (e.g. server crash)
+- **Typing indicators** — `typing` / `stop-typing` events broadcast to the conversation room *and* to the receiver's personal room if they are online but not viewing that chat
+- **In-app push notification** — `new-message-notification` event sent to the receiver's personal room when they are not inside the active conversation
 
 ### Conversation Management
 - **Start a conversation** — search for any registered user; reuses an existing conversation if one already exists
 - **Conversations list** — sorted by `updatedAt` descending; pinned conversations always appear at the top
-- **Pin / unpin conversations** — per-user; stored as `pinnedConversations` array on the User model
-- **Block / unblock users** — `blockedUsers` array on the User model
+- **Pin / unpin conversations** — per-user; stored as `pinnedConversations` array on the User document
+- **Block / unblock users** — `blockedUsers` array on the User document
   - Blocked users cannot send messages (checked server-side before every `send-message` socket event)
-  - Blocked users see sanitized profile information (generic name, avatar, and offline status)
+  - Blocked users see sanitised profile information (generic name, avatar, and offline status)
 - **User discovery** — paginated, searchable, and sortable list of users with whom you have no existing conversation
 
 ### UI & UX
 - **React 19** with full **TypeScript** type safety
 - **Tailwind CSS v4** with **shadcn/ui** component library
-- **Dark / Light mode** toggle powered by `next-themes`
+- **Dark / Light / System** theme toggle powered by `next-themes`
 - Fully **responsive** — optimised for both desktop and mobile
 - **React Router v7** nested route layout system (`DashboardLayout` → `ConversationLayout`)
 - **Sonner** toast notifications
-- **Lottie** typing animation rendered via `react-lottie`
 - **Markdown rendering** in bot messages via `react-markdown` + `remark-gfm`
 
 ---
@@ -107,7 +118,8 @@ A full-stack, production-grade real-time chat application built with the MERN st
 | **Authentication** | JSON Web Tokens (jsonwebtoken), bcryptjs |
 | **AI** | Google Gemini via `@google/genai` |
 | **File Storage** | AWS S3 (pre-signed POST uploads) |
-| **Email** | Nodemailer (Gmail SMTP) |
+| **Email** | Nodemailer (Gmail SMTP) — OTP login, email verification, message notifications |
+| **Containerisation** | Docker, Docker Compose |
 
 ---
 
@@ -115,17 +127,23 @@ A full-stack, production-grade real-time chat application built with the MERN st
 
 ```
 conversa/
+├── docker-compose.yml                 # Orchestrates mongo + backend + frontend
+├── .env.example                       # Template for all environment variables
+│
 ├── backend/
+│   ├── Dockerfile
 │   ├── index.js                       # Express app entry point, HTTP server, Socket.IO init
 │   ├── db.js                          # MongoDB connection
 │   ├── secrets.js                     # Environment variable exports
 │   ├── Controllers/
-│   │   ├── auth-controller.js         # register, login, OTP, authUser
+│   │   ├── auth-controller.js         # register, login, OTP login, authUser,
+│   │   │                              #   sendVerificationOtp, verifyEmail
 │   │   ├── conversation-controller.js # create, list, get, togglePin
-│   │   ├── message-controller.js      # allMessage, delete, star, clear, AI streaming
-│   │   └── user-controller.js         # profile, block, S3 presign, user search
+│   │   ├── message-controller.js      # allMessage, delete, bulkHide, star, clear, AI streaming
+│   │   └── user-controller.js         # updateProfile, block, S3 presign, user search,
+│   │                                  #   deleteAccount, getBlockStatus
 │   ├── Models/
-│   │   ├── User.js                    # blockedUsers, pinnedConversations, isBot, OTP
+│   │   ├── User.js                    # Full user schema (see Data Models)
 │   │   ├── Conversation.js            # members, latestmessage, unreadCounts
 │   │   └── Message.js                 # seenBy, hiddenFrom, softDeleted, starredBy, replyTo
 │   ├── Routes/
@@ -135,9 +153,11 @@ conversa/
 │   │   └── user-routes.js
 │   ├── socket/
 │   │   ├── index.js                   # Socket.IO setup, JWT auth middleware, userSocketMap
-│   │   └── handlers.js                # All socket event handlers
+│   │   └── handlers.js                # All socket event handlers + email notification trigger
 │   ├── middleware/
 │   │   └── fetchUser.js               # JWT verification middleware for REST routes
+│   ├── utils/
+│   │   └── sendMessageEmail.js        # Fire-and-forget offline message email helper
 │   ├── jobs/
 │   │   └── staleOnlineUsers.js        # Hourly cleanup of stale isOnline flags
 │   └── scripts/
@@ -145,39 +165,32 @@ conversa/
 │       └── delete-test-users.js
 │
 └── frontend/
-    ├── src/
-    │   ├── App.tsx                    # Route definitions
-    │   ├── MainLayout.tsx             # Root layout with providers
-    │   ├── lib/
-    │   │   ├── api.ts                 # Centralized HTTP client (all API calls)
-    │   │   ├── socket.ts              # Socket.IO client + emitter helpers
-    │   │   └── utils.ts
-    │   ├── context/
-    │   │   ├── auth-provider.tsx
-    │   │   ├── chat-provider.tsx
-    │   │   └── conversations-provider.tsx
-    │   ├── hooks/
-    │   │   ├── use-auth.ts
-    │   │   ├── use-chat.ts
-    │   │   ├── use-conversations.ts
-    │   │   ├── use-socket.ts
-    │   │   └── use-mobile.ts
-    │   ├── pages/
-    │   │   ├── Home.tsx
-    │   │   ├── Login.tsx
-    │   │   ├── SignUp.tsx
-    │   │   ├── Conversations.tsx
-    │   │   ├── ConversationDetail.tsx
-    │   │   ├── User.tsx               # User discovery / new chat
-    │   │   ├── UserProfile.tsx
-    │   │   └── StarredMessages.tsx
-    │   └── components/
-    │       ├── dashboard/             # ConversationsList, MessageInput, SingleMessage, etc.
-    │       ├── layout/                # DashboardLayout, DashboardSidebar, ConversationLayout
-    │       ├── ui/                    # shadcn/ui components
-    │       ├── NotificationListener.tsx
-    │       └── theme-provider.tsx
-    └── public/
+    ├── Dockerfile
+    ├── nginx.conf                     # SPA fallback + asset caching config
+    └── src/
+        ├── App.tsx                    # Route definitions
+        ├── pages/
+        │   ├── Home.tsx
+        │   ├── Login.tsx              # Password + OTP login tabs
+        │   ├── SignUp.tsx
+        │   ├── VerifyEmail.tsx        # Post-login email verification gate
+        │   ├── Conversations.tsx
+        │   ├── ConversationDetail.tsx # Chat view with streaming bot support
+        │   ├── StarredMessages.tsx
+        │   ├── User.tsx               # Redirect helper
+        │   └── UserProfile.tsx        # Profile, password, appearance, notification settings
+        ├── components/
+        │   ├── layout/
+        │   │   ├── DashboardLayout.tsx  # Auth + email-verified guard
+        │   │   ├── ConversationLayout.tsx
+        │   │   └── DashboardSidebar.tsx
+        │   ├── dashboard/             # Chat-specific components
+        │   └── ui/                    # shadcn/ui component library
+        ├── context/                   # AuthProvider, ChatProvider, ConversationsProvider
+        ├── hooks/                     # use-auth, use-chat, use-conversations, use-socket
+        └── lib/
+            ├── api.ts                 # Centralised HTTP client
+            └── socket.ts              # Socket.IO client setup
 ```
 
 ---
@@ -187,22 +200,27 @@ conversa/
 ```
 Browser ──HTTP──▶  Express REST API  ──▶  MongoDB
         ──WS────▶  Socket.IO Server  ──▶  MongoDB
+                                     ──▶  Gmail SMTP (offline email notifications)
 
 Socket.IO authentication
   Every socket connection presents a JWT in handshake.auth.token.
-  The server verifies it and attaches socket.userId.
+  The middleware verifies the token and attaches socket.userId.
   Handlers never trust any client-supplied user ID.
 
 Per-user socket tracking
   userSocketMap: Map<userId, Set<socketId>>
-  Allows correct online/offline transitions across multiple tabs/devices.
+  Tracks all open connections across multiple tabs and devices.
   A user is marked offline only when their last socket disconnects.
+
+Email notification pipeline
+  send-message event ──▶ receiver has no open sockets?
+                      ──▶ receiver.emailNotificationsEnabled?
+                      ──▶ sendMessageEmail() (fire-and-forget, no await)
 
 AI streaming pipeline
   Browser ──send-message──▶  Server detects isBot member
-                           ──▶  streamAiResponse() async generator
-                           ──▶  yields: user-message → chunks → done
-                           ──▶  emits: receive-message, bot-chunk, bot-done
+          ◀──bot-chunk───── streams Gemini chunks via Socket.IO
+          ◀──bot-done──────  final saved Message document
 ```
 
 ---
@@ -220,11 +238,14 @@ AI streaming pipeline
 | `profilePic` | String | URL; defaults to ui-avatars.com |
 | `isOnline` | Boolean | updated on socket connect / disconnect |
 | `lastSeen` | Date | set on disconnect |
+| `isEmailVerified` | Boolean | `false` until OTP verification is completed |
+| `emailNotificationsEnabled` | Boolean | controls offline email notifications; default `true` |
 | `isBot` | Boolean | `true` for AI bot accounts |
-| `otp` | String | bcrypt hashed OTP for OTP login |
+| `otp` | String | bcrypt-hashed OTP (shared for login OTP and email verification) |
 | `otpExpiry` | Date | OTP expiry timestamp |
 | `blockedUsers` | [ObjectId → User] | users this user has blocked |
 | `pinnedConversations` | [ObjectId → Conversation] | pinned conversation IDs |
+| `isDeleted` | Boolean | soft-delete flag for anonymised accounts |
 
 ### Conversation
 
@@ -261,9 +282,11 @@ All protected routes require the header `auth-token: <JWT>`.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `POST` | `/auth/register` | — | Create account + personal bot + initial conversation |
-| `POST` | `/auth/login` | — | Login with password or OTP |
-| `POST` | `/auth/getotp` | — | Send OTP to email |
+| `POST` | `/auth/login` | — | Login with password or OTP (`{ email, password }` or `{ email, otp }`) |
+| `POST` | `/auth/getotp` | — | Send OTP to email for OTP-based login |
 | `GET` | `/auth/me` | ✅ | Get authenticated user profile |
+| `POST` | `/auth/send-verification-otp` | ✅ | Send a 10-min verification OTP to the logged-in user's email |
+| `POST` | `/auth/verify-email` | ✅ | Verify email with OTP; sets `isEmailVerified: true` |
 
 ### Conversations — `/conversation`
 
@@ -289,13 +312,14 @@ All protected routes require the header `auth-token: <JWT>`.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `PUT` | `/user/update` | ✅ | Update profile (name, about, profilePic, password) |
+| `PUT` | `/user/update` | ✅ | Update profile (name, about, profilePic, password, emailNotificationsEnabled) |
 | `GET` | `/user/online-status/:id` | ✅ | Get online status of a user |
 | `GET` | `/user/non-friends` | ✅ | Paginated, searchable, sortable user discovery |
 | `GET` | `/user/presigned-url` | ✅ | Get S3 pre-signed POST URL for image upload |
 | `POST` | `/user/block/:id` | ✅ | Block a user |
 | `DELETE` | `/user/block/:id` | ✅ | Unblock a user |
 | `GET` | `/user/block-status/:id` | ✅ | Get mutual block status between current user and target |
+| `DELETE` | `/user/delete` | ✅ | Soft-delete / anonymise the authenticated user's account |
 
 #### `GET /user/non-friends` Query Parameters
 
@@ -319,7 +343,7 @@ The socket server requires a valid JWT passed in `handshake.auth.token`.
 | `setup` | — | Join personal room; mark user online; notify friends |
 | `join-chat` | `{ roomId }` | Join a conversation room; reset unread count; mark all messages seen |
 | `leave-chat` | `roomId` | Leave a conversation room |
-| `send-message` | `{ conversationId, text?, imageUrl? }` | Send a message (or trigger AI bot response) |
+| `send-message` | `{ conversationId, text?, imageUrl?, replyTo? }` | Send a message (or trigger AI bot response) |
 | `delete-message` | `{ messageId, conversationId, scope }` | Delete a message (`scope: "me" \| "everyone"`) |
 | `typing` | `{ conversationId, typer, receiverId }` | Broadcast typing indicator |
 | `stop-typing` | `{ conversationId, typer, receiverId }` | Broadcast stop-typing |
@@ -331,9 +355,9 @@ The socket server requires a valid JWT passed in `handshake.auth.token`.
 | `user setup` | `userId` | Confirms setup complete |
 | `user-joined-room` | `userId` | Another user entered the conversation room |
 | `receive-message` | `Message` | New message delivered to room |
-| `new-message-notification` | `{ message, sender, conversation }` | Push notification to receiver's personal room |
+| `new-message-notification` | `{ message, sender, conversation }` | In-app push to receiver's personal room when not in the chat |
 | `messages-seen` | `{ conversationId, seenBy, seenAt }` | Notifies sender their messages were read |
-| `message-deleted` | `{ messageId, conversationId, softDeleted }` | Tombstone broadcast for scope="everyone" |
+| `message-deleted` | `{ messageId, conversationId, softDeleted, latestmessage }` | Tombstone broadcast for scope="everyone"; sidebar preview updated |
 | `message-blocked` | `{ conversationId }` | Message rejected due to a block |
 | `typing` | `{ conversationId, typer, receiverId? }` | Forwarded typing indicator |
 | `stop-typing` | `{ conversationId, typer, receiverId? }` | Forwarded stop-typing indicator |
@@ -347,37 +371,39 @@ The socket server requires a valid JWT passed in `handshake.auth.token`.
 
 ## Environment Variables
 
-### Backend — `backend/.env`
+A single `.env` file at the **project root** is used for both Docker Compose and local development. Copy `.env.example` to `.env` and fill in your values.
 
 ```env
-# MongoDB
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net
+# ── Database ──────────────────────────────────────────────────────────────────
+# Overridden automatically by docker-compose to point at the mongo service.
+MONGO_URI=mongodb://localhost:27017/
 MONGO_DB_NAME=conversa
 
-# JWT
-JWT_SECRET=your_jwt_secret_here
+# ── Auth ──────────────────────────────────────────────────────────────────────
+JWT_SECRET=change_me_to_a_long_random_secret
 
-# CORS — frontend origin
-CORS_ORIGIN=http://localhost:5173
-
-# Google Gemini AI
+# ── Google Gemini (AI bot) ────────────────────────────────────────────────────
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-3-flash-preview
 
-# AWS S3 (for image uploads)
-AWS_BUCKET_NAME=your_bucket_name
-AWS_ACCESS_KEY=your_aws_access_key_id
-AWS_SECRET=your_aws_secret_access_key
+# ── Email (Gmail SMTP) ────────────────────────────────────────────────────────
+# Used for: OTP login, email verification, offline message notifications
+EMAIL=your_gmail@gmail.com
+PASSWORD=your_gmail_app_password   # use a Gmail App Password, not your account password
 
-# Nodemailer — Gmail SMTP for OTP emails
-EMAIL=your_gmail_address@gmail.com
-PASSWORD=your_gmail_app_password
-```
+# ── CORS ─────────────────────────────────────────────────────────────────────
+CORS_ORIGIN=*                      # restrict to your frontend origin in production
 
-### Frontend — `frontend/src/.env`
+# ── AWS S3 (profile picture uploads) ─────────────────────────────────────────
+AWS_BUCKET_NAME=your_s3_bucket_name
+AWS_ACCESS_KEY=your_aws_access_key
+AWS_SECRET=your_aws_secret_key
 
-```env
-# Backend API base URL (also used for Socket.IO)
+# ── App URL (used in email notification deep-links) ───────────────────────────
+FRONTEND_URL=http://localhost:5173
+
+# ── Frontend (Vite — baked into the JS bundle at build time) ─────────────────
+# Must be the public URL where the backend is reachable FROM THE BROWSER.
 VITE_API_URL=http://localhost:5500
 ```
 
@@ -385,146 +411,104 @@ VITE_API_URL=http://localhost:5500
 
 ## Getting Started
 
-### Prerequisites
+### Docker (recommended)
 
-- **Node.js** v18 or later
-- **npm** v9 or later
-- A running **MongoDB** instance (Atlas free tier works fine)
-- An **AWS S3** bucket with CORS configured to allow your frontend origin
-- A **Google Gemini API key** from [Google AI Studio](https://aistudio.google.com/)
-- A **Gmail account** with an [App Password](https://myaccount.google.com/apppasswords) enabled for OTP emails
-
-### Installation
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose plugin).
 
 ```bash
-# 1. Clone
-git clone https://github.com/pankil-soni/mern-chat-app.git
-cd mern-chat-app
+# 1. Clone the repo
+git clone https://github.com/your-username/conversa.git
+cd conversa
 
-# 2. Backend
-cd backend
-npm install
-# Copy and fill in your values
+# 2. Create your .env from the template
 cp .env.example .env
+# Edit .env — set JWT_SECRET, GEMINI_API_KEY, EMAIL, PASSWORD, AWS_*, etc.
 
-# 3. Frontend
-cd ../frontend
-npm install
-# Create frontend/src/.env and set VITE_API_URL
+# 3. Build and start all three services (mongo + backend + frontend)
+docker compose up --build -d
+
+# Frontend  →  http://localhost
+# Backend   →  http://localhost:5500
+# MongoDB   →  localhost:27019 (mapped away from the default 27017)
 ```
 
-### Run in Development
+> **`VITE_API_URL`** must be the URL where the backend is reachable **from the user's browser**.  
+> For local Docker this is `http://localhost:5500`. For production, use your public API domain.
+
+### Manual (local development)
+
+Requires Node.js ≥ 20 and a running MongoDB instance.
 
 ```bash
-# Terminal 1 — backend (port 5500)
+# Backend
 cd backend
-node index.js
+cp .env.example .env   # or edit backend/.env directly
+npm install
+npm run dev            # nodemon — listens on :5500
 
-# Terminal 2 — frontend (port 5173)
+# Frontend (separate terminal)
 cd frontend
-npm run dev
+# create frontend/src/.env with:  VITE_API_URL=http://localhost:5500
+npm install
+npm run dev            # Vite dev server — listens on :5173
 ```
-
-Open `http://localhost:5173`.
-
-### Build for Production
-
-```bash
-cd frontend
-npm run build   # outputs to frontend/dist/
-```
-
-Serve `dist/` with any static host and deploy the backend with a process manager such as PM2.
 
 ---
 
 ## Scripts
 
-### Backend
+### Backend (`backend/`)
 
 | Script | Command | Description |
 |---|---|---|
-| `seed:users` | `npm run seed:users` | Seed guest test accounts into the database |
-| `delete:users` | `npm run delete:users` | Remove seeded test accounts |
+| `start` | `node index.js` | Start production server |
+| `dev` | `nodemon index.js` | Start dev server with hot-reload |
+| `seed:users` | `node scripts/seed-test-users.js` | Seed a set of test users |
+| `delete:users` | `node scripts/delete-test-users.js` | Remove seeded test users |
 
-### Frontend
+### Frontend (`frontend/`)
 
 | Script | Command | Description |
 |---|---|---|
-| `dev` | `npm run dev` | Start Vite dev server with HMR |
-| `build` | `npm run build` | TypeScript check + Vite production build |
-| `preview` | `npm run preview` | Preview production build locally |
-| `lint` | `npm run lint` | ESLint |
-| `format` | `npm run format` | Prettier (all `*.ts` / `*.tsx` files) |
-| `typecheck` | `npm run typecheck` | `tsc --noEmit` type check without emitting |
+| `dev` | `vite` | Start Vite dev server |
+| `build` | `tsc -b && vite build` | Type-check + production build |
+| `preview` | `vite preview` | Preview the production build locally |
+| `lint` | `eslint .` | Run ESLint |
+| `format` | `prettier --write` | Format all TS/TSX files |
+| `typecheck` | `tsc --noEmit` | Type-check without emitting |
 
 ---
 
 ## Security Design
 
-| Concern | Approach |
-|---|---|
-| Password storage | bcrypt, salt rounds = 10 |
-| OTP storage | bcrypt hashed before persisting to database |
-| JWT | 7-day expiry; verified in REST middleware **and** Socket.IO handshake middleware |
-| Socket identity | `socket.userId` set server-side by JWT verification; handlers never trust client-supplied IDs |
-| Conversation membership | Every socket handler and REST controller verifies membership before reading or writing |
-| Block enforcement | Block check performed server-side before every `send-message` event; blocked users receive sanitized profiles |
-| S3 upload authorization | Short-lived (15 min) pre-signed POST URLs scoped to `conversa/<userId>/`; 5 MB size cap enforced by S3 policy |
-| CORS | Configurable `CORS_ORIGIN` for both Express and Socket.IO |
+- **JWT** — tokens are signed with `JWT_SECRET`, expire after 7 days, and are verified on every protected REST route and every socket connection
+- **No trusted client IDs** — `senderId` is always taken from the verified JWT (`socket.userId`), never from the client payload
+- **bcrypt** — passwords and OTPs are hashed with bcrypt before storage
+- **Block enforcement** — the server checks block status before processing every `send-message` event; a blocked sender receives `message-blocked` instead
+- **Conversation membership** — every `join-chat` and `send-message` handler verifies the authenticated user is a member of the target conversation
+- **Email verification gate** — the `DashboardLayout` component redirects unverified users to `/verify-email` before they can access any chat functionality; bot accounts are pre-verified at creation
+- **S3 pre-signed uploads** — the client never receives AWS credentials; uploads go directly to S3 through a short-lived pre-signed POST URL generated server-side
+- **Non-root Docker user** — the backend container runs as an unprivileged `appuser`
+- **Account anonymisation** — deleted accounts have credentials wiped and PII replaced with generic values; the document is retained (flagged `isDeleted: true`) to preserve conversation context for other participants
 
 ---
 
 ## Background Jobs
 
-### Stale Online Users — `backend/jobs/staleOnlineUsers.js`
+### `staleOnlineUsers` (hourly cron)
 
-Runs **immediately on server start**, then repeats every **1 hour**.
-
-Finds all users where `isOnline: true` and `updatedAt < (now − 1 hour)` and marks them offline, setting `lastSeen` to their actual `updatedAt` value. This corrects users left permanently online due to a missed socket disconnect (e.g. server restart, network drop, ungraceful client exit).
-
----
-
-## Guest Accounts
-
-Two pre-seeded accounts are available for quick testing:
-
-```
-Email:    guestuser1@gmail.com  /  guestuser2@gmail.com
-Password: 1234guest
-```
-
----
-
-## Roadmap
-
-- [x] Real-time one-on-one messaging
-- [x] AI chatbot with streaming and context memory
-- [x] Image messages (S3)
-- [x] OTP login
-- [x] Delete for me / delete for everyone
-- [x] Star / unstar messages + starred messages page
-- [x] Pin conversations
-- [x] Block / unblock users
-- [x] Clear chat
-- [x] Multi-device online presence
-- [ ] Reply to message
-- [ ] Message reactions
-- [ ] Group conversations
-- [ ] Double-tick read receipt UI
-- [ ] Delete My Account feature
+Runs every hour and sets `isOnline: false` + updates `lastSeen` for any user whose `isOnline` flag is still `true` but has no active sockets in `userSocketMap`. This recovers from crash scenarios where the `disconnect` event was never fired.
 
 ---
 
 ## Contributing
+Contributions are welcome! Please open an issue or submit a pull request with any improvements or bug fixes.
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push: `git push origin feat/your-feature`
-5. Open a Pull Request
-
----
+**Steps to contribute:**
+1. Fork the repository and create a new branch for your feature or bug fix.
+2. Make your changes with clear commit messages.
+3. Ensure all tests pass and the application runs correctly.
+4. Submit a pull request describing your changes and why they should be merged.
 
 ## License
 
