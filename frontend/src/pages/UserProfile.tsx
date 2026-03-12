@@ -175,6 +175,10 @@ const UserProfile = () => {
     // notification preferences
     const [bannersEnabled, setBannersEnabled] = useState(() => getStoredBool(LS_NOTIF_BANNERS))
     const [soundEnabled, setSoundEnabled] = useState(() => getStoredBool(LS_NOTIF_SOUND))
+    const [emailNotifsEnabled, setEmailNotifsEnabled] = useState(
+        () => user?.emailNotificationsEnabled ?? true
+    )
+    const [emailNotifsLoading, setEmailNotifsLoading] = useState(false)
 
     // delete account dialog
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -282,6 +286,21 @@ const UserProfile = () => {
     const toggleSound = (val: boolean) => {
         setSoundEnabled(val)
         localStorage.setItem(LS_NOTIF_SOUND, String(val))
+    }
+
+    const toggleEmailNotifs = async (val: boolean) => {
+        setEmailNotifsEnabled(val)
+        setEmailNotifsLoading(true)
+        try {
+            await userApi.updateProfile({ emailNotificationsEnabled: val })
+            setUser({ ...user, emailNotificationsEnabled: val })
+        } catch (err) {
+            // Revert on failure
+            setEmailNotifsEnabled(!val)
+            toast.error(err instanceof Error ? err.message : "Failed to update email notifications")
+        } finally {
+            setEmailNotifsLoading(false)
+        }
     }
 
     /* ── logout ─────────────────────────────────────────────────────────── */
@@ -471,6 +490,19 @@ const UserProfile = () => {
                                 id="notif-sound"
                                 checked={soundEnabled}
                                 onCheckedChange={toggleSound}
+                            />
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="notif-email" className="text-sm font-medium">Email Notifications</Label>
+                                <p className="text-xs text-muted-foreground">Receive an email when you get a message while offline</p>
+                            </div>
+                            <Switch
+                                id="notif-email"
+                                checked={emailNotifsEnabled}
+                                disabled={emailNotifsLoading}
+                                onCheckedChange={toggleEmailNotifs}
                             />
                         </div>
                     </CardContent>

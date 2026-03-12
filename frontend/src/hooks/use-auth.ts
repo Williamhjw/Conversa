@@ -15,6 +15,7 @@ export type User = {
     isBot: boolean;
     blockedUsers: string[];
     isEmailVerified: boolean;
+    emailNotificationsEnabled: boolean;
 };
 
 export const useAuthProvider = () => {

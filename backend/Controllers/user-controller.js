@@ -202,7 +202,12 @@ const getNonFriendsList = async (req, res) => {
 const updateprofile = async (req, res) => {
   try {
     const dbuser = await User.findById(req.user.id);
-    const allowedUpdates = { name: req.body.name, about: req.body.about, profilePic: req.body.profilePic };
+    const allowedUpdates = {
+      name: req.body.name,
+      about: req.body.about,
+      profilePic: req.body.profilePic,
+      emailNotificationsEnabled: req.body.emailNotificationsEnabled,
+    };
 
     if (req.body.newpassword) {
       const passwordCompare = await bcrypt.compare(

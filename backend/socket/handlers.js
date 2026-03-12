@@ -6,6 +6,7 @@ const {
   sendMessageHandler,
   deleteMessageHandler,
 } = require("../Controllers/message-controller.js");
+const sendMessageEmail = require("../utils/sendMessageEmail.js");
 
 // userSocketMap is Map<userId, Set<socketId>> injected from socket/index.js.
 // It is used to determine whether a user still has any open connections before
@@ -186,7 +187,7 @@ module.exports = (io, socket, userSocketMap) => {
       // Prevent sending if (a) the receiver has blocked the sender, or
       // (b) the sender has blocked the receiver.
       const [receiverDoc, senderDoc] = await Promise.all([
-        User.findById(receiverId, "blockedUsers"),
+        User.findById(receiverId, "blockedUsers emailNotificationsEnabled email name"),
         User.findById(senderId, "blockedUsers"),
       ]);
       const isBlockedByReceiver = receiverDoc?.blockedUsers?.some(
@@ -245,6 +246,19 @@ module.exports = (io, socket, userSocketMap) => {
           sender: senderInfo,
           conversation: conversation
         });
+
+        // Fire-and-forget email notification — only when receiver is completely
+        // offline (no open sockets) and has email notifications enabled.
+        // Never awaited so it adds zero latency to message delivery.
+        const isReceiverOffline = !receiverSocketIds || receiverSocketIds.size === 0;
+        if (isReceiverOffline && receiverDoc?.emailNotificationsEnabled && receiverDoc?.email) {
+          sendMessageEmail(
+            { name: receiverDoc.name, email: receiverDoc.email },
+            { name: senderInfo.name, profilePic: senderInfo.profilePic },
+            text || null,
+            conversationId
+          );
+        }
       }
     } catch (error) {
       console.error("Error in send-message handler:", error);

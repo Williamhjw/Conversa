@@ -40,6 +40,7 @@ export interface UpdateProfilePayload {
     profilePic?: string;
     oldpassword?: string;
     newpassword?: string;
+    emailNotificationsEnabled?: boolean;
 }
 
 export type NonFriendsSort = "name_asc" | "name_desc" | "last_seen_recent" | "last_seen_oldest";

@@ -50,6 +50,10 @@ const Userschema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    emailNotificationsEnabled: {
+      type: Boolean,
+      default: true,
+    },
     isBot: {
       type: Boolean,
       default: false,

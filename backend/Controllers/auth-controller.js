@@ -231,7 +231,7 @@ const sendotp = async (req, res) => {
         <tr>
         <td align="center" style="background-color:#6366f1;padding:36px 40px;">
           <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">Conversa</h1>
-          <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Your secure messaging platform</p>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">online chatting platform</p>
         </td>
         </tr>
 
