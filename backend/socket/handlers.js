@@ -116,7 +116,7 @@ module.exports = (io, socket, userSocketMap) => {
     try {
       console.log("Received message");
 
-      const { conversationId, text, imageUrl } = data;
+      const { conversationId, text, imageUrl, replyTo } = data;
       // Always use the authenticated user as the sender — never trust client-supplied senderId
       const senderId = currentUserId;
 
@@ -221,6 +221,7 @@ module.exports = (io, socket, userSocketMap) => {
         conversationId,
         receiverId,
         isReceiverInsideChatRoom,
+        replyTo: replyTo || null,
       });
 
       io.to(conversationId).emit("receive-message", message);

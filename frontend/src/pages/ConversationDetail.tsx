@@ -134,6 +134,9 @@ export default function ConversationDetail() {
     // Streaming bot response state
     const [streamingBot, setStreamingBot] = useState<{ conversationId: string; tempId: string; text: string } | null>(null)
 
+    // Reply state
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+
     // Highlighted message (jump-to from starred messages)
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
 
@@ -614,8 +617,10 @@ export default function ConversationDetail() {
                                 isBot={receiver?.isBot && !isMine}
                                 receiverId={receiver?._id ?? ""}
                                 myId={user?._id ?? ""}
+                                receiverName={receiver?.name ?? ""}
                                 onDelete={handleDelete}
                                 onStar={handleStar}
+                                onReply={setReplyingTo}
                                 selectMode={selectMode}
                                 selected={selectedIds.has(msg._id)}
                                 onToggleSelect={handleToggleSelect}
@@ -640,9 +645,12 @@ export default function ConversationDetail() {
                     conversationId={id}
                     myId={user._id}
                     receiverId={receiver?._id ?? ""}
+                    receiverName={receiver?.name ?? ""}
                     isReceiverBot={receiver?.isBot ?? false}
                     isBlocked={blockStatus.iBlockedThem}
                     blockedByThem={blockStatus.theyBlockedMe}
+                    replyToMessage={replyingTo}
+                    onCancelReply={() => setReplyingTo(null)}
                 />
             )}
 
