@@ -11,29 +11,29 @@ import { toast } from "sonner"
 // Floating feature cards shown on large screens
 const spotlights = [
     {
-        title: "Lightning fast",
-        desc: "Messages delivered instantly via WebSocket connections.",
+        title: "极速传输",
+        desc: "通过 WebSocket 连接即时传递消息。",
         icon: Zap,
         side: "left" as const,
         top: "20%",
     },
     {
-        title: "Private & secure",
-        desc: "Your conversations stay between you and the people you trust.",
+        title: "隐私安全",
+        desc: "您的对话只保留在您信任的人之间。",
         icon: Shield,
         side: "left" as const,
         top: "52%",
     },
     {
-        title: "Personal AI Chatbot",
-        desc: "Chat with your own AI assistant, powered by Gemini.",
+        title: "个人AI助手",
+        desc: "与您专属的AI助手聊天，由 GLM 4.7 驱动。",
         icon: Bot,
         side: "right" as const,
         top: "20%",
     },
     {
-        title: "Passwordless login",
-        desc: "Sign in instantly with a one-time code sent to your inbox.",
+        title: "无密码登录",
+        desc: "通过发送到您邮箱的一次性验证码快速登录。",
         icon: MessageCircle,
         side: "right" as const,
         top: "52%",
@@ -58,11 +58,11 @@ export default function SignUp() {
     }, [user, navigate])
 
     const validate = () => {
-        if (!name.trim()) return "Please enter your name."
-        if (!email.trim()) return "Please enter your email address."
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address."
-        if (password.length < 6) return "Password must be at least 6 characters."
-        if (password !== confirmPassword) return "Passwords do not match."
+        if (!name.trim()) return "请输入您的姓名。"
+        if (!email.trim()) return "请输入您的邮箱地址。"
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "请输入有效的邮箱地址。"
+        if (password.length < 6) return "密码至少需要6个字符。"
+        if (password !== confirmPassword) return "两次输入的密码不一致。"
         return null
     }
 
@@ -78,7 +78,7 @@ export default function SignUp() {
             await register(name.trim(), email.trim().toLowerCase(), password)
             navigate("/user/conversations", { replace: true })
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Registration failed. Try again.")
+            toast.error(err instanceof Error ? err.message : "注册失败，请重试。")
         } finally {
             setLoading(false)
         }
@@ -86,10 +86,10 @@ export default function SignUp() {
 
     const passwordStrength = () => {
         if (!password) return null
-        if (password.length < 6) return { level: 1, label: "Weak", color: "bg-destructive" }
+        if (password.length < 6) return { level: 1, label: "弱", color: "bg-destructive" }
         if (password.length < 10 || !/[A-Z]/.test(password) || !/[0-9]/.test(password))
-            return { level: 2, label: "Fair", color: "bg-amber-400" }
-        return { level: 3, label: "Strong", color: "bg-green-500" }
+            return { level: 2, label: "中等", color: "bg-amber-400" }
+        return { level: 3, label: "强", color: "bg-green-500" }
     }
     const strength = passwordStrength()
 
@@ -133,7 +133,7 @@ export default function SignUp() {
                                 Conversa
                             </h1>
                             <p className="mt-1.5 text-sm text-muted-foreground">
-                                Chat with anyone, anywhere, instantly.
+                                随时随地，即时聊天。
                             </p>
                         </div>
                     </div>
@@ -141,18 +141,17 @@ export default function SignUp() {
                     {/* Form card */}
                     <div className="rounded-2xl border border-border/60 bg-card shadow-xl shadow-black/5 dark:shadow-black/25 p-6">
                         <div className="mb-5">
-                            <h2 className="text-lg font-semibold tracking-tight">Create an account</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">Fill in the details below to get started</p>
+                            <h2 className="text-lg font-semibold tracking-tight">创建账户</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">填写以下信息开始使用</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Name */}
                             <div className="space-y-1.5">
-                                <Label htmlFor="name">Full name</Label>
+                                <Label htmlFor="name">姓名</Label>
                                 <Input
                                     id="name"
                                     type="text"
-                                    placeholder="Jane Doe"
+                                    placeholder="张三"
                                     autoComplete="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -160,9 +159,8 @@ export default function SignUp() {
                                 />
                             </div>
 
-                            {/* Email */}
                             <div className="space-y-1.5">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">邮箱地址</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -174,14 +172,13 @@ export default function SignUp() {
                                 />
                             </div>
 
-                            {/* Password */}
                             <div className="space-y-1.5">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="password">密码</Label>
                                 <div className="relative">
                                     <Input
                                         id="password"
                                         type={showPass ? "text" : "password"}
-                                        placeholder="Min. 6 characters"
+                                        placeholder="至少6个字符"
                                         autoComplete="new-password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -197,7 +194,6 @@ export default function SignUp() {
                                         {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                {/* Strength bar */}
                                 {strength && (
                                     <div className="space-y-1">
                                         <div className="flex gap-1">
@@ -209,20 +205,19 @@ export default function SignUp() {
                                             ))}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Strength: <span className="font-medium text-foreground">{strength.label}</span>
+                                            强度：<span className="font-medium text-foreground">{strength.label}</span>
                                         </p>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Confirm Password */}
                             <div className="space-y-1.5">
-                                <Label htmlFor="confirmPassword">Confirm password</Label>
+                                <Label htmlFor="confirmPassword">确认密码</Label>
                                 <div className="relative">
                                     <Input
                                         id="confirmPassword"
                                         type={showConfirm ? "text" : "password"}
-                                        placeholder="Repeat your password"
+                                        placeholder="再次输入密码"
                                         autoComplete="new-password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -242,7 +237,7 @@ export default function SignUp() {
                                     </button>
                                 </div>
                                 {confirmPassword && confirmPassword !== password && (
-                                    <p className="text-xs text-destructive">Passwords do not match</p>
+                                    <p className="text-xs text-destructive">两次输入的密码不一致</p>
                                 )}
                             </div>
 
@@ -252,7 +247,7 @@ export default function SignUp() {
                                 disabled={loading}
                             >
                                 {loading ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                                {loading ? "Creating account…" : "Create account"}
+                                {loading ? "创建中…" : "创建账户"}
                             </Button>
                         </form>
                     </div>
@@ -260,15 +255,15 @@ export default function SignUp() {
                     {/* Footer links */}
                     <div className="flex flex-col items-center gap-3">
                         <p className="text-center text-sm text-muted-foreground">
-                            Already have an account?{" "}
+                            已有账户？{" "}
                             <Link to="/login" className="font-medium text-primary hover:opacity-80 transition-opacity">
-                                Sign in
+                                登录
                             </Link>
                         </p>
                         <Link to="/">
                             <Button variant="link" size="sm" className="text-muted-foreground text-xs h-8">
                                 <ArrowLeft className="w-3 h-3 mr-1" />
-                                Back to home
+                                返回首页
                             </Button>
                         </Link>
                     </div>

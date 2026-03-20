@@ -35,8 +35,18 @@ interface Props {
     highlighted?: boolean
 }
 
-function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+function formatTime(dateStr: string): string {
+    const d = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) {
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    }
+    if (d.toDateString() === yesterday.toDateString()) {
+        return `昨天 ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    }
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted }: Props) {
@@ -103,26 +113,26 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
 
                             )}>
                             <p className={cn("font-semibold truncate", isMine ? "text-white/80" : "text-primary")}>
-                                {message.replyTo.senderId === myId ? "You" : receiverName}
+                                {message.replyTo.senderId === myId ? "你" : receiverName}
                             </p>
                             <p className={cn("truncate", isMine ? "text-white/60" : "text-muted-foreground")}>
                                 {message.replyTo.softDeleted
-                                    ? "This message was deleted"
-                                    : message.replyTo.text || "🖼️ Photo"}
+                                    ? "此消息已删除"
+                                    : message.replyTo.text || "🖼️ 图片"}
                             </p>
                         </div>
                     )}
                     {/* Tombstone for soft-deleted messages */}
                     {message.softDeleted ? (
                         <p className="text-xs italic opacity-60 leading-relaxed select-none">
-                            This message was deleted
+                            此消息已删除
                         </p>
                     ) : (
                         <>
                             {message.imageUrl && (
                                 <img
                                     src={message.imageUrl}
-                                    alt="attachment"
+                                    alt="图片"
                                     className="max-w-60 max-h-80 rounded-lg mb-1 object-cover"
                                 />
                             )}
@@ -181,19 +191,18 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={() => onReply(message)}
-                                title="Reply"
+                                title="回复"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
                                 <Reply className="size-3.5" />
                             </Button>
                         )}
-                        {/* Star button — always available */}
                         {!message.softDeleted && (
                             <Button
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={() => onStar(message._id)}
-                                title={isStarred ? "Unstar" : "Star"}
+                                title={isStarred ? "取消收藏" : "收藏"}
                                 className={cn(
                                     "flex items-center justify-center size-7 rounded-full",
                                     isStarred && "text-yellow-400"
@@ -207,7 +216,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={handleCopy}
-                                title="Copy"
+                                title="复制"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
                                 {copied
@@ -216,13 +225,12 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 }
                             </Button>
                         )}
-                        {/* Show delete button for: own messages always; received messages always; tombstones only if isMine */}
                         {(!message.softDeleted || isMine) && (
                             <Button
                                 size={"icon"}
                                 variant={"destructive"}
                                 onClick={() => setDeleteOpen(true)}
-                                title="Delete"
+                                title="删除"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
                                 <Trash2 className="size-3.5 text-muted-foreground group-hover:text-inherit" />
@@ -236,31 +244,29 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
             <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete message</AlertDialogTitle>
+                        <AlertDialogTitle>删除消息</AlertDialogTitle>
                         <AlertDialogDescription>
                             {message.softDeleted
-                                ? "This message is already deleted for everyone. Remove it from your view?"
-                                : "Choose how you want to delete this message."}
+                                ? "此消息已为所有人删除。是否从您的视图中移除？"
+                                : "选择您要如何删除此消息。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-col sm:flex-col gap-2">
-                        {/* Delete for everyone: only own non-tombstone messages */}
                         {isMine && !message.softDeleted && (
                             <AlertDialogAction
                                 className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 onClick={() => { setDeleteOpen(false); onDelete(message._id, "everyone") }}
                             >
-                                Delete for everyone
+                                为所有人删除
                             </AlertDialogAction>
                         )}
-                        {/* Delete for me: own messages + received messages + own tombstones */}
                         <AlertDialogAction
                             className="w-full"
                             onClick={() => { setDeleteOpen(false); onDelete(message._id, "me") }}
                         >
-                            Delete for me
+                            为我删除
                         </AlertDialogAction>
-                        <AlertDialogCancel className="w-full mt-0">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="w-full mt-0">取消</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

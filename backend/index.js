@@ -5,8 +5,16 @@ const http = require("http");
 const PORT = 5500;
 const { initSocket } = require("./socket/index.js");
 const { startStaleOnlineUsersJob } = require("./jobs/staleOnlineUsers.js");
+const { CORS_ORIGIN } = require("./secrets.js");
+
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: CORS_ORIGIN === "*" ? "*" : CORS_ORIGIN.split(",").map(s => s.trim()),
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "auth-token"],
+}));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 
@@ -27,11 +35,10 @@ initSocket(server); // Initialize socket.io logic
 
 // Start server and connect to database
 const start = async () => {
-  await connectDB(); // connect first
-  server.listen(PORT, () => {
+  await connectDB();
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server started at http://localhost:${PORT}`);
   });
-  // Start background jobs after DB is ready
   startStaleOnlineUsersJob();
 };
 

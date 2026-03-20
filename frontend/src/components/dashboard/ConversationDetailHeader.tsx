@@ -44,17 +44,17 @@ function initials(name: string) {
 
 function lastSeenText(receiver: User | null): string {
     if (!receiver) return ""
-    if (receiver.isBot || receiver.isOnline) return "Online"
-    if (!receiver.lastSeen) return "Offline"
+    if (receiver.isBot || receiver.isOnline) return "在线"
+    if (!receiver.lastSeen) return "离线"
     const diff = Date.now() - new Date(receiver.lastSeen).getTime()
     const mins = Math.floor(diff / 60_000)
-    if (mins < 1) return "Last seen just now"
-    if (mins < 60) return `Last seen ${mins}m ago`
+    if (mins < 1) return "刚刚在线"
+    if (mins < 60) return `${mins}分钟前在线`
     const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `Last seen ${hrs}h ago`
+    if (hrs < 24) return `${hrs}小时前在线`
     const days = Math.floor(hrs / 24)
-    if (days === 1) return "Last seen yesterday"
-    return `Last seen ${new Date(receiver.lastSeen).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+    if (days === 1) return "昨天在线"
+    return `${new Date(receiver.lastSeen).toLocaleDateString(undefined, { month: "short", day: "numeric" })}在线`
 }
 
 export default function ConversationDetailHeader({ receiver, onClearChat, onSelectMode, isBlockedByMe, onBlock, onUnblock }: Props) {
@@ -112,19 +112,19 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                     <DropdownMenuContent className="w-max" align="end">
                         <DropdownMenuItem onClick={onSelectMode}>
                             <CheckCircle className="size-4" />
-                            Select messages
+                            选择消息
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {!receiver?.isBot && (
                             isBlockedByMe ? (
                                 <DropdownMenuItem onClick={onUnblock}>
                                     <Ban className="size-4" />
-                                    Unblock user
+                                    解除屏蔽
                                 </DropdownMenuItem>
                             ) : (
                                 <DropdownMenuItem onClick={onBlock} variant="destructive">
                                     <Ban className="size-4" />
-                                    Block user
+                                    屏蔽用户
                                 </DropdownMenuItem>
                             )
                         )}
@@ -133,7 +133,7 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                             variant="destructive"
                         >
                             <Trash2 className="size-4" />
-                            Clear chat
+                            清空聊天
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -143,7 +143,7 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
             <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>Profile</DialogTitle>
+                        <DialogTitle>个人资料</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center gap-4 pt-2">
                         <div className="relative">
@@ -166,13 +166,13 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                     <div className="space-y-3 text-sm">
                         {receiver?.email && !receiver.isBot && (
                             <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Email</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">邮箱</p>
                                 <p>{receiver.email}</p>
                             </div>
                         )}
                         {receiver?.about && (
                             <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">About</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">简介</p>
                                 <p className="text-foreground/80">{receiver.about}</p>
                             </div>
                         )}
@@ -183,18 +183,18 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
             <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Clear chat</AlertDialogTitle>
+                        <AlertDialogTitle>清空聊天</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will remove all messages from your view. The other person will still see their messages.
+                            这将从您的视图中移除所有消息。对方仍然可以看到他们的消息。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-primary focus:bg-primary active:bg-primary"
                             onClick={() => { setClearOpen(false); onClearChat() }}
                         >
-                            Clear
+                            清空
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -55,12 +55,11 @@ module.exports = (io, socket, userSocketMap) => {
   socket.on("join-chat", async (data) => {
     try {
       const { roomId } = data;
-      console.log("User joined chat room", roomId);
+      console.log(`User ${currentUserId} joined chat room ${roomId}`);
 
       const conv = await Conversation.findById(roomId);
       if (!conv) return;
 
-      // Verify the authenticated user is actually a member of this conversation
       const isMember = conv.members.some(
         (m) => m.toString() === currentUserId
       );
@@ -72,6 +71,7 @@ module.exports = (io, socket, userSocketMap) => {
       }
 
       socket.join(roomId);
+      console.log(`User ${currentUserId} successfully joined room ${roomId}`);
 
       // Reset unread count for this user
       conv.unreadCounts = conv.unreadCounts.map((unread) => {
@@ -225,7 +225,28 @@ module.exports = (io, socket, userSocketMap) => {
         replyTo: replyTo || null,
       });
 
+      console.log(`Message saved: ${message._id}, conversationId: ${conversationId}, senderId: ${senderId}, receiverId: ${receiverId}`);
+
+      const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
+      console.log(`Room ${conversationId} has ${conversationRoom?.size || 0} sockets`);
+
       io.to(conversationId).emit("receive-message", message);
+      console.log(`Emitted receive-message to room ${conversationId}`);
+
+      const senderSocketIds = userSocketMap.get(senderId);
+      if (senderSocketIds) {
+        const senderInRoom = conversationRoom && Array.from(senderSocketIds).some((sid) => conversationRoom.has(sid));
+        console.log(`Sender ${senderId} in room: ${senderInRoom}, sender sockets: ${senderSocketIds.size}`);
+        if (!senderInRoom) {
+          io.to(senderId).emit("receive-message", message);
+          console.log(`Emitted receive-message to sender ${senderId}`);
+        }
+      }
+
+      if (!isReceiverInsideChatRoom) {
+        io.to(receiverId.toString()).emit("receive-message", message);
+        console.log(`Emitted receive-message to receiver ${receiverId}`);
+      }
 
       conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
         if (unread.userId.toString() === receiverId.toString()) {
@@ -267,7 +288,10 @@ module.exports = (io, socket, userSocketMap) => {
 
   socket.on("send-message", handleSendMessage);
 
-  // ─── Delete message ────────────────────────────────────────────────────────
+  socket.on("leave-chat", (room) => {
+    console.log(`User ${currentUserId} leaving room ${room}`);
+    socket.leave(room);
+  });
   // scope="everyone": soft-delete → shows tombstone to all. Broadcast to room.
   // scope="me":       hard-delete for sender only → no broadcast (only caller hides it).
   const handleDeleteMessage = async (data) => {

@@ -56,7 +56,7 @@ export default function NotificationListener() {
                     // emitting, so use the conversation payload as-is.
                     const newConv: Conversation = {
                         ...data.conversation,
-                        latestmessage: message.text ?? "sent an image",
+                        latestmessage: message.text ?? "发送了一张图片",
                         updatedAt: new Date().toISOString(),
                     }
                     return [newConv, ...prev]
@@ -66,7 +66,7 @@ export default function NotificationListener() {
                     if (i !== idx) return c
                     return {
                         ...c,
-                        latestmessage: message.text ?? "sent an image",
+                        latestmessage: message.text ?? "发送了一张图片",
                         updatedAt: new Date().toISOString(),
                         unreadCounts: c.unreadCounts.map((u) =>
                             u.userId !== sender._id
@@ -113,7 +113,7 @@ export default function NotificationListener() {
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold leading-tight truncate">{sender.name}</p>
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {message.text ?? "sent an image"}
+                                {message.text ?? "发送了一张图片"}
                             </p>
                         </div>
                         <Button
@@ -125,7 +125,7 @@ export default function NotificationListener() {
                                 navigate(`/user/conversations/${convId}`)
                             }}
                         >
-                            Open
+                            打开
                         </Button>
                     </div>
                 ),

@@ -113,7 +113,7 @@ function EditableField({
                     </div>
                 </div>
             ) : (
-                <p className="text-sm whitespace-pre-wrap wrap-break-word">{value || <span className="text-muted-foreground italic">Not set</span>}</p>
+                <p className="text-sm whitespace-pre-wrap wrap-break-word">{value || <span className="text-muted-foreground italic">未设置</span>}</p>
             )}
         </div>
     )
@@ -200,9 +200,9 @@ const UserProfile = () => {
         try {
             await userApi.updateProfile({ profilePic: defaultUrl })
             setUser({ ...user, profilePic: defaultUrl })
-            toast.success("Profile photo removed")
+            toast.success("头像已移除")
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed to remove photo")
+            toast.error(e instanceof Error ? e.message : "移除头像失败")
         } finally {
             setAvatarUploading(false)
         }
@@ -210,31 +210,26 @@ const UserProfile = () => {
 
     /* ── profile-pic upload ─────────────────────────────────────────────── */
     const handleAvatarChange = async (file: File) => {
-        if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return }
+        if (!file.type.startsWith("image/")) { toast.error("请选择图片文件"); return }
         setAvatarUploading(true)
         try {
-            const { url, fields } = await userApi.getPresignedUrl(file.name, file.type) as { url: string; fields: Record<string, string> }
+            const { token, key, domain } = await userApi.getPresignedUrl(file.name, file.type) as { token: string; key: string; domain: string }
 
             const form = new FormData()
-            Object.entries(fields).forEach(([k, v]) => form.append(k, v))
+            form.append("token", token)
+            form.append("key", key)
             form.append("file", file)
 
-            const upload = await fetch(url, { method: "POST", body: form })
+            const upload = await fetch("https://upload.qiniup.com", { method: "POST", body: form })
             if (!upload.ok) throw new Error("Upload failed")
 
-            // The S3 presigned-post returns the object URL in a <Location> XML tag
-            const xml = await upload.text()
-            const loc = xml.match(/<Location>(.*?)<\/Location>/)?.[1]
-            if (!loc) throw new Error("Could not parse upload location")
+            const imageUrl = `${domain}/${key}`
 
-            const imageUrl = decodeURIComponent(loc)
-
-            // persist to DB
             await userApi.updateProfile({ profilePic: imageUrl })
             setUser({ ...user, profilePic: imageUrl })
-            toast.success("Profile photo updated")
+            toast.success("头像已更新")
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Upload failed")
+            toast.error(e instanceof Error ? e.message : "上传失败")
         } finally {
             setAvatarUploading(false)
         }
@@ -244,34 +239,34 @@ const UserProfile = () => {
     const handleSaveName = async (name: string) => {
         await userApi.updateProfile({ name })
         setUser({ ...user, name })
-        toast.success("Name updated")
+        toast.success("姓名已更新")
     }
 
     const handleSaveAbout = async (about: string) => {
         await userApi.updateProfile({ about })
         setUser({ ...user, about })
-        toast.success("About updated")
+        toast.success("简介已更新")
     }
 
     /* ── password change ────────────────────────────────────────────────── */
-    const handlePasswordChange = async (e: React.FormEvent) => {
+    const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!oldPassword || !newPassword || !confirmPassword) {
-            toast.error("Please fill all password fields"); return
+            toast.error("请填写所有密码字段"); return
         }
         if (newPassword !== confirmPassword) {
-            toast.error("New passwords do not match"); return
+            toast.error("两次输入的新密码不一致"); return
         }
         if (newPassword.length < 6) {
-            toast.error("Password must be at least 6 characters"); return
+            toast.error("密码至少需要6个字符"); return
         }
         setPwSaving(true)
         try {
             await userApi.updateProfile({ oldpassword: oldPassword, newpassword: newPassword })
-            toast.success("Password changed successfully")
+            toast.success("密码修改成功")
             setOldPassword(""); setNewPassword(""); setConfirm("")
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to change password")
+            toast.error(err instanceof Error ? err.message : "修改密码失败")
         } finally {
             setPwSaving(false)
         }
@@ -295,9 +290,8 @@ const UserProfile = () => {
             await userApi.updateProfile({ emailNotificationsEnabled: val })
             setUser({ ...user, emailNotificationsEnabled: val })
         } catch (err) {
-            // Revert on failure
             setEmailNotifsEnabled(!val)
-            toast.error(err instanceof Error ? err.message : "Failed to update email notifications")
+            toast.error(err instanceof Error ? err.message : "更新邮件通知设置失败")
         } finally {
             setEmailNotifsLoading(false)
         }
@@ -314,11 +308,11 @@ const UserProfile = () => {
         setDeleting(true)
         try {
             await userApi.deleteAccount()
-            toast.success("Account deleted")
+            toast.success("账户已删除")
             logout()
             navigate("/login")
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to delete account")
+            toast.error(err instanceof Error ? err.message : "删除账户失败")
         } finally {
             setDeleting(false)
             setDeleteDialogOpen(false)
@@ -333,11 +327,10 @@ const UserProfile = () => {
                 {/* ── Profile card ──────────────────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Profile</CardTitle>
-                        <CardDescription>Your public information</CardDescription>
+                        <CardTitle>个人资料</CardTitle>
+                        <CardDescription>您的公开信息</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        {/* Avatar */}
                         <div className="flex justify-center">
                             <div className="relative group">
                                 <Avatar className="size-24 text-lg">
@@ -355,7 +348,7 @@ const UserProfile = () => {
                                                     onClick={() => fileInputRef.current?.click()}
                                                     disabled={avatarUploading}
                                                     className="p-1 hover:scale-110 transition-transform"
-                                                    title="Upload photo"
+                                                    title="上传头像"
                                                 >
                                                     <Camera className="size-5 text-white" />
                                                 </button>
@@ -364,7 +357,7 @@ const UserProfile = () => {
                                                         onClick={handleRemoveAvatar}
                                                         disabled={avatarUploading}
                                                         className="p-1 hover:scale-110 transition-transform"
-                                                        title="Remove photo"
+                                                        title="移除头像"
                                                     >
                                                         <Trash2 className="size-5 text-white" />
                                                     </button>
@@ -385,43 +378,42 @@ const UserProfile = () => {
 
                         <Separator />
 
-                        {/* Name & About */}
-                        <EditableField label="Name" value={user.name} onSave={handleSaveName} />
-                        <EditableField label="About" value={user.about ?? ""} onSave={handleSaveAbout} multiline />
+                        <EditableField label="姓名" value={user.name} onSave={handleSaveName} />
+                        <EditableField label="简介" value={user.about ?? ""} onSave={handleSaveAbout} multiline />
                     </CardContent>
                 </Card>
 
                 {/* ── Change Password card ───────────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Change Password</CardTitle>
-                        <CardDescription>Update your account password</CardDescription>
+                        <CardTitle>修改密码</CardTitle>
+                        <CardDescription>更新您的账户密码</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handlePasswordChange} className="space-y-4">
                             <PasswordInput
                                 id="old-pw"
-                                label="Current Password"
+                                label="当前密码"
                                 value={oldPassword}
                                 onChange={setOldPassword}
-                                placeholder="Enter current password"
+                                placeholder="输入当前密码"
                             />
                             <PasswordInput
                                 id="new-pw"
-                                label="New Password"
+                                label="新密码"
                                 value={newPassword}
                                 onChange={setNewPassword}
-                                placeholder="Enter new password"
+                                placeholder="输入新密码"
                             />
                             <PasswordInput
                                 id="confirm-pw"
-                                label="Confirm New Password"
+                                label="确认新密码"
                                 value={confirmPassword}
                                 onChange={setConfirm}
-                                placeholder="Confirm new password"
+                                placeholder="确认新密码"
                             />
                             <Button type="submit" disabled={pwSaving} className="w-full">
-                                {pwSaving ? <><Loader2 className="size-4 mr-2 animate-spin" /> Saving…</> : "Change Password"}
+                                {pwSaving ? <><Loader2 className="size-4 mr-2 animate-spin" /> 保存中…</> : "修改密码"}
                             </Button>
                         </form>
                     </CardContent>
@@ -430,19 +422,19 @@ const UserProfile = () => {
                 {/* ── Appearance card ───────────────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Appearance</CardTitle>
+                        <CardTitle>外观</CardTitle>
                         <CardDescription>
-                            Choose your preferred color theme. You can also press{" "}
+                            选择您喜欢的颜色主题。您也可以在任意位置（文本输入框外）按{" "}
                             <kbd className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs font-mono font-medium text-muted-foreground">D</kbd>{" "}
-                            anywhere (outside a text field) to quickly toggle between light and dark.
+                            快速切换明暗模式。
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-3 gap-3">
                             {([
-                                { value: "light", label: "Light", Icon: Sun },
-                                { value: "dark",  label: "Dark",  Icon: Moon },
-                                { value: "system", label: "System", Icon: Monitor },
+                                { value: "light", label: "浅色", Icon: Sun },
+                                { value: "dark",  label: "深色",  Icon: Moon },
+                                { value: "system", label: "跟随系统", Icon: Monitor },
                             ] as const).map(({ value, label, Icon }) => (
                                 <button
                                     key={value}
@@ -465,17 +457,16 @@ const UserProfile = () => {
                 {/* ── Notification Settings card ─────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Notification Settings</CardTitle>
-                        <CardDescription>Control how you receive notifications</CardDescription>
+                        <CardTitle>通知</CardTitle>
+                        <CardDescription>管理您的通知偏好设置</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <Label htmlFor="notif-banners" className="text-sm font-medium">Notification Banners</Label>
-                                <p className="text-xs text-muted-foreground">Show toast notifications for new messages</p>
+                                <p className="text-sm font-medium">横幅通知</p>
+                                <p className="text-xs text-muted-foreground">在屏幕右上角显示消息通知</p>
                             </div>
                             <Switch
-                                id="notif-banners"
                                 checked={bannersEnabled}
                                 onCheckedChange={toggleBanners}
                             />
@@ -483,11 +474,10 @@ const UserProfile = () => {
                         <Separator />
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <Label htmlFor="notif-sound" className="text-sm font-medium">Notification Sound</Label>
-                                <p className="text-xs text-muted-foreground">Play a sound when a new message arrives</p>
+                                <p className="text-sm font-medium">消息提示音</p>
+                                <p className="text-xs text-muted-foreground">收到新消息时播放提示音</p>
                             </div>
                             <Switch
-                                id="notif-sound"
                                 checked={soundEnabled}
                                 onCheckedChange={toggleSound}
                             />
@@ -495,15 +485,17 @@ const UserProfile = () => {
                         <Separator />
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <Label htmlFor="notif-email" className="text-sm font-medium">Email Notifications</Label>
-                                <p className="text-xs text-muted-foreground">Receive an email when you get a message while offline</p>
+                                <p className="text-sm font-medium">邮件通知</p>
+                                <p className="text-xs text-muted-foreground">离线时通过邮件接收消息通知</p>
                             </div>
-                            <Switch
-                                id="notif-email"
-                                checked={emailNotifsEnabled}
-                                disabled={emailNotifsLoading}
-                                onCheckedChange={toggleEmailNotifs}
-                            />
+                            <div className="flex items-center gap-2">
+                                {emailNotifsLoading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+                                <Switch
+                                    checked={emailNotifsEnabled}
+                                    onCheckedChange={toggleEmailNotifs}
+                                    disabled={emailNotifsLoading}
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -511,8 +503,8 @@ const UserProfile = () => {
                 {/* ── Account Actions card ──────────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Account</CardTitle>
-                        <CardDescription>Manage your session and account</CardDescription>
+                        <CardTitle>账户</CardTitle>
+                        <CardDescription>管理您的会话和账户</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <Button
@@ -520,14 +512,14 @@ const UserProfile = () => {
                             className="w-full justify-center gap-2"
                             onClick={handleLogout}
                         >
-                            Log Out
+                            退出登录
                         </Button>
                         <Button
                             variant="destructive"
                             className="w-full justify-center gap-2"
                             onClick={() => { setDeleteConfirmText(""); setDeleteDialogOpen(true) }}
                         >
-                            Delete My Account
+                            删除我的账户
                         </Button>
                     </CardContent>
                 </Card>
@@ -539,15 +531,15 @@ const UserProfile = () => {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                    <AlertDialogTitle>删除账户？</AlertDialogTitle>
                     <AlertDialogDescription asChild>
                         <div className="space-y-3">
                             <p>
-                                This action <strong>cannot be undone</strong>. Your profile will be anonymised —
-                                your name, email, and bio will be cleared, but your messages and conversations
-                                will remain visible to other participants.
+                                此操作<strong>无法撤销</strong>。您的个人资料将被匿名化 —
+                                您的姓名、邮箱和简介将被清除，但您的消息和对话
+                                对其他参与者仍然可见。
                             </p>
-                            <p>Type <strong>DELETE</strong> below to confirm:</p>
+                            <p>输入 <strong>DELETE</strong> 以确认：</p>
                             <Input
                                 value={deleteConfirmText}
                                 onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -558,13 +550,13 @@ const UserProfile = () => {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
                     <AlertDialogAction
                         disabled={deleteConfirmText !== "DELETE" || deleting}
                         onClick={handleDeleteAccount}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                        {deleting ? <><Loader2 className="size-4 mr-2 animate-spin" />Deleting…</> : "Delete Account"}
+                        {deleting ? <><Loader2 className="size-4 mr-2 animate-spin" />删除中…</> : "删除账户"}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

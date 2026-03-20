@@ -40,7 +40,7 @@ function formatDate(dateStr: string) {
         return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
     if (d.toDateString() === yesterday.toDateString()) {
-        return "Yesterday"
+        return "昨天"
     }
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
@@ -81,16 +81,16 @@ function StarredMessageCard({
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="text-sm font-medium truncate">
-                        {isMine ? "You" : (peer?.name ?? "Unknown")}
+                        {isMine ? "你" : (peer?.name ?? "未知")}
                     </span>
                     {peer && !isMine && (
                         <span className="text-xs text-muted-foreground truncate">
-                            · in chat with {peer.isBot ? "AI Chatbot" : peer.name}
+                            · 与 {peer.isBot ? "AI助手" : peer.name} 的聊天
                         </span>
                     )}
                     {isMine && peer && (
                         <span className="text-xs text-muted-foreground truncate">
-                            · to {peer.isBot ? "AI Chatbot" : peer.name}
+                            · 发送给 {peer.isBot ? "AI助手" : peer.name}
                         </span>
                     )}
                     <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
@@ -101,7 +101,7 @@ function StarredMessageCard({
                     {msg.imageUrl && !msg.text && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground italic">
                             <ImageIcon className="size-3.5 shrink-0" />
-                            Photo
+                            图片
                         </span>
                     )}
                     {msg.text && (
@@ -119,7 +119,7 @@ function StarredMessageCard({
                     variant="ghost"
                     size="icon"
                     className="size-5 text-muted-foreground hover:text-destructive"
-                    title="Unstar"
+                    title="取消收藏"
                     onClick={(e) => { e.stopPropagation(); onUnstar(msg._id) }}
                 >
                     <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
@@ -128,7 +128,7 @@ function StarredMessageCard({
                     variant="ghost"
                     size="icon"
                     className="size-5 text-muted-foreground hover:text-primary"
-                    title="Go to message"
+                    title="跳转到消息"
                     onClick={() => onNavigate(conversationId, msg._id)}
                 >
                     <ArrowRight className="size-3.5" />
@@ -149,7 +149,7 @@ export default function StarredMessages() {
         messageApi
             .getStarred<StarredMessage[]>()
             .then((data) => setMessages(data))
-            .catch(() => toast.error("Failed to load starred messages."))
+            .catch(() => toast.error("加载收藏消息失败。"))
             .finally(() => setIsLoading(false))
     }, [])
 
@@ -161,9 +161,9 @@ export default function StarredMessages() {
         try {
             await messageApi.toggleStar(messageId)
             setMessages((prev) => prev.filter((m) => m._id !== messageId))
-            toast.success("Message unstarred")
+            toast.success("消息已取消收藏")
         } catch {
-            toast.error("Failed to unstar message.")
+            toast.error("取消收藏失败。")
         }
     }, [])
 
@@ -173,8 +173,8 @@ export default function StarredMessages() {
             <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
                 <Star className="size-5 text-yellow-400 fill-yellow-400 shrink-0" />
                 <div>
-                    <h1 className="text-base font-semibold leading-tight">Starred Messages</h1>
-                    <p className="text-xs text-muted-foreground">Messages you've saved for later</p>
+                    <h1 className="text-base font-semibold leading-tight">收藏的消息</h1>
+                    <p className="text-xs text-muted-foreground">您保存的消息</p>
                 </div>
             </div>
 
@@ -193,7 +193,7 @@ export default function StarredMessages() {
                 ) : messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 py-16">
                         <Star className="size-10 text-muted-foreground/30" />
-                        <p className="text-sm text-center">No starred messages yet.<br />Hover a message and click ⭐ to save it.</p>
+                        <p className="text-sm text-center">暂无收藏的消息。<br />悬停在消息上并点击 ⭐ 即可收藏。</p>
                     </div>
                 ) : (
                     messages.map((msg) => (

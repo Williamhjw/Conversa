@@ -21,16 +21,16 @@ import { Separator } from "../ui/separator"
 
 const NAV_ITEMS = [
     {
-        label: "Conversations",
+        label: "聊天",
         href: "/user/conversations",
         icon: MessagesSquare,
-        tooltip: "Conversations",
+        tooltip: "聊天",
     },
     {
-        label: "Starred Messages",
+        label: "收藏的消息",
         href: "/user/starred",
         icon: Star,
-        tooltip: "Starred Messages",
+        tooltip: "收藏的消息",
     },
 ]
 
@@ -100,7 +100,7 @@ export default function DashboardSidebar() {
                                 )
                             })}
                             <Separator className="mt-1 mb-3" />
-                            <SidebarMenuItem title="AI Chatbot" key={"ai-chatbot"} className="min-w-10 min-h-10">
+                            <SidebarMenuItem title="AI 助手" key={"ai-chatbot"} className="min-w-10 min-h-10">
                                 <SidebarMenuButton
                                     asChild
                                     className={`min-w-10 min-h-10 ${state=="collapsed"&&"rounded-full"} bg-primary hover:bg-primary p-4 border-2 border-primary text-background hover:text-background`}
@@ -109,7 +109,7 @@ export default function DashboardSidebar() {
                                         <div className="relative shrink-0">
                                             <Bot className="mx relative min-h-5 min-w-5" />
                                         </div>
-                                        <span>AI Chatbot</span>
+                                        <span>AI 助手</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
@@ -126,15 +126,14 @@ export default function DashboardSidebar() {
                     <SidebarMenuItem key={"Account Settings"} className="flex min-w-10 min-h-10 items-center justify-center">
                         <SidebarMenuButton
                             asChild
-                            title="Account Settings"
+                            title="账户设置"
                             className="min-w-9 min-h-9"
                         >
                             <Link to={"/user/profile"} className="flex items-center gap-2">
-                                {/* icon — with overlay badge in collapsed/icon mode */}
                                 <div className="relative shrink-0">
                                     <Settings className="min-h-5 min-w-5 text-muted-foreground" />
                                 </div>
-                                <span>Account Settings</span>
+                                <span>账户设置</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -167,12 +166,12 @@ export default function DashboardSidebar() {
                     {/* Logout */}
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            title="Log out"
+                            title="退出登录"
                             onClick={handleLogout}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 active:bg-destructive/10 min-h-10 min-w-10"
                         >
                             <LogOut className="min-h-5 min-w-5" />
-                            <span>Log out</span>
+                            <span>退出登录</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

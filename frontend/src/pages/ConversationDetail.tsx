@@ -94,8 +94,8 @@ function DateDivider({ date }: { date: string }) {
         const today = new Date()
         const yesterday = new Date(today)
         yesterday.setDate(today.getDate() - 1)
-        if (d.toDateString() === today.toDateString()) return "Today"
-        if (d.toDateString() === yesterday.toDateString()) return "Yesterday"
+        if (d.toDateString() === today.toDateString()) return "今天"
+        if (d.toDateString() === yesterday.toDateString()) return "昨天"
         return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
     })()
     return (
@@ -164,9 +164,9 @@ export default function ConversationDetail() {
         try {
             await userApi.blockUser(receiver._id)
             setBlockStatus((prev) => ({ ...prev, iBlockedThem: true }))
-            toast.success(`${receiver.name} has been blocked`)
+            toast.success(`${receiver.name} 已被屏蔽`)
         } catch {
-            toast.error("Failed to block user")
+            toast.error("屏蔽用户失败")
         }
     }, [receiver])
 
@@ -175,9 +175,9 @@ export default function ConversationDetail() {
         try {
             await userApi.unblockUser(receiver._id)
             setBlockStatus((prev) => ({ ...prev, iBlockedThem: false }))
-            toast.success(`${receiver.name} has been unblocked`)
+            toast.success(`${receiver.name} 已解除屏蔽`)
         } catch {
-            toast.error("Failed to unblock user")
+            toast.error("解除屏蔽失败")
         }
     }, [receiver])
 
@@ -191,7 +191,6 @@ export default function ConversationDetail() {
         return () => { socket.off("message-blocked", onBlocked) }
     }, [id])
 
-    // ── select mode state ─────────────────────────────────────────────────
     const [selectMode, setSelectMode] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -279,7 +278,7 @@ export default function ConversationDetail() {
                 )
             })
             .catch(() => {
-                toast.error("Failed to load conversation.")
+                toast.error("加载对话失败。")
                 navigate("/user/conversations", { replace: true })
             })
             .finally(() => setIsChatLoading(false))
@@ -339,15 +338,20 @@ export default function ConversationDetail() {
     // ── socket: receive-message ─────────────────────────────────────────
     useEffect(() => {
         const onMessage = (msg: Message) => {
+            console.log("Received message:", msg);
             if (msg.conversationId !== id) return
-            setMessageList((prev) => [...prev, msg])
+            setMessageList((prev) => {
+                // Prevent duplicate messages
+                if (prev.some((m) => m._id === msg._id)) return prev
+                return [...prev, msg]
+            })
             // update sidebar latest message and bump to top
             setConversationsList((prev) => {
                 const idx = prev.findIndex((c) => c._id === id)
                 if (idx === -1) return prev
                 const updated = prev.map((c, i) =>
                     i === idx
-                        ? { ...c, latestmessage: msg.text ?? "sent an image", updatedAt: msg.createdAt }
+                        ? { ...c, latestmessage: msg.text ?? "发送了一张图片", updatedAt: msg.createdAt }
                         : c
                 )
                 // Keep pinned conversations first, then sort the rest by updatedAt
@@ -388,7 +392,7 @@ export default function ConversationDetail() {
             if (userMessageId) {
                 setMessageList((prev) => prev.filter((m) => m._id !== userMessageId))
             }
-            toast.error("AI is currently unavailable. Please try again later.")
+            toast.error("AI 暂时不可用，请稍后再试。")
         }
 
         socket.on("bot-chunk", onBotChunk)
@@ -512,20 +516,19 @@ export default function ConversationDetail() {
                     // Update sidebar preview immediately for the sender
                     const latestMsg = newList[newList.length - 1]
                     const newPreview = latestMsg
-                        ? (latestMsg.softDeleted ? "This message was deleted" : (latestMsg.text || "sent an image"))
+                        ? (latestMsg.softDeleted ? "此消息已删除" : (latestMsg.text || "发送了一张图片"))
                         : ""
                     setConversationsList((prev) =>
                         prev.map((c) => c._id === id ? { ...c, latestmessage: newPreview } : c)
                     )
                 }
             } catch {
-                toast.error("Failed to delete message.")
+                toast.error("删除消息失败。")
             }
         },
         [user, id, messageList, setMessageList, setConversationsList]
     )
 
-    // ── star handler ──────────────────────────────────────────────────────
     const handleStar = useCallback(
         async (messageId: string) => {
             try {
@@ -533,26 +536,24 @@ export default function ConversationDetail() {
                 setMessageList((prev) =>
                     prev.map((m) => m._id === messageId ? { ...m, starredBy } : m)
                 )
-                toast.success(isStarred ? "Message starred" : "Message unstarred")
+                toast.success(isStarred ? "消息已收藏" : "消息已取消收藏")
             } catch {
-                toast.error("Failed to update star.")
+                toast.error("收藏操作失败。")
             }
         },
         [setMessageList]
     )
 
-    // ── clear chat handler ────────────────────────────────────────────────
     const handleClearChat = useCallback(async () => {
         if (!id) return
         try {
             await messageApi.clearChat(id)
             setMessageList([])
         } catch {
-            toast.error("Failed to clear chat.")
+            toast.error("清空聊天失败。")
         }
     }, [id, setMessageList])
 
-    // ── bulk delete selected handler ─────────────────────────────────
     const handleBulkDelete = useCallback(async () => {
         if (selectedIds.size === 0) return
         const ids = Array.from(selectedIds)
@@ -561,7 +562,7 @@ export default function ConversationDetail() {
             setMessageList((prev) => prev.filter((m) => !ids.includes(m._id)))
             exitSelectMode()
         } catch {
-            toast.error("Failed to delete selected messages.")
+            toast.error("删除选中消息失败。")
         }
     }, [selectedIds, exitSelectMode, setMessageList])
 
@@ -600,7 +601,7 @@ export default function ConversationDetail() {
                     <MessagesSkeleton />
                 ) : messageList.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
-                        <p className="text-sm">No messages yet. Say hi! 👋</p>
+                        <p className="text-sm">暂无消息，打个招呼吧！👋</p>
                     </div>
                 ) : (
                     grouped.map((item, idx) => {
@@ -658,10 +659,10 @@ export default function ConversationDetail() {
             {selectMode && (
                 <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-t bg-background">
                     <Button variant="outline" size="sm" onClick={exitSelectMode} className="gap-1.5">
-                        Cancel
+                        取消
                     </Button>
                     <span className="text-sm text-muted-foreground">
-                        {selectedIds.size} selected
+                        已选择 {selectedIds.size} 条
                     </span>
                     <Button
                         variant="destructive"
@@ -671,27 +672,26 @@ export default function ConversationDetail() {
                         className="gap-1.5"
                     >
                         <Trash2 className="size-4" />
-                        Delete
+                        删除
                     </Button>
                 </div>
             )}
 
-            {/* Bulk-delete confirmation dialog */}
             <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete {selectedIds.size} message{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+                        <AlertDialogTitle>删除 {selectedIds.size} 条消息？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            The selected {selectedIds.size !== 1 ? "messages" : "message"} will be removed from your view. This cannot be undone.
+                            选中的消息将从您的视图中移除。此操作无法撤销。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={() => { setBulkDeleteOpen(false); handleBulkDelete() }}
                         >
-                            Delete for me
+                            为我删除
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

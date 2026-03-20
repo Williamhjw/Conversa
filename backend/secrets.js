@@ -9,9 +9,10 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
 const EMAIL = process.env.EMAIL;
 const PASSWORD = process.env.PASSWORD;
-const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
-const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY;
-const AWS_SECRET = process.env.AWS_SECRET;
+const QINIU_ACCESS_KEY = process.env.QINIU_ACCESS_KEY;
+const QINIU_SECRET_KEY = process.env.QINIU_SECRET_KEY;
+const QINIU_BUCKET = process.env.QINIU_BUCKET;
+const QINIU_DOMAIN = process.env.QINIU_DOMAIN;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://conversa-chatting.netlify.app";
 
 module.exports = {
@@ -19,12 +20,13 @@ module.exports = {
   MONGO_URI,
   MONGO_DB_NAME,
   JWT_SECRET,
-  AWS_ACCESS_KEY,
-  AWS_SECRET,
   GEMINI_API_KEY,
   GEMINI_MODEL,
   EMAIL,
   PASSWORD,
-  AWS_BUCKET_NAME,
+  QINIU_ACCESS_KEY,
+  QINIU_SECRET_KEY,
+  QINIU_BUCKET,
+  QINIU_DOMAIN,
   FRONTEND_URL,
 };

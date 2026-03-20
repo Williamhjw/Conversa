@@ -12,10 +12,15 @@ let io;
 const userSocketMap = new Map();
 
 const initSocket = (server) => {
+  const corsOrigin = CORS_ORIGIN === "*"
+    ? true
+    : CORS_ORIGIN.split(",").map(s => s.trim());
+
   io = new Server(server, {
     cors: {
-      origin: CORS_ORIGIN,
+      origin: corsOrigin,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
   console.log("Socket.io initialized");

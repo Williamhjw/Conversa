@@ -250,7 +250,7 @@ export default function NewChatDialog({ open, onOpenChange }: NewChatDialogProps
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden flex flex-col max-h-[85vh]">
                 <DialogHeader className="px-4 pt-7 pb-3 shrink-0">
-                    <DialogTitle>New Conversation</DialogTitle>
+                    <DialogTitle>新对话</DialogTitle>
                 </DialogHeader>
 
                 {/* Controls */}
@@ -260,7 +260,7 @@ export default function NewChatDialog({ open, onOpenChange }: NewChatDialogProps
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                         <Input
                             autoFocus
-                            placeholder="Search by name or email…"
+                            placeholder="搜索姓名或邮箱…"
                             className="pl-8 h-9"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
@@ -273,10 +273,10 @@ export default function NewChatDialog({ open, onOpenChange }: NewChatDialogProps
                             <SelectValue placeholder="Sort by…" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="name_asc">Name - A → Z</SelectItem>
-                            <SelectItem value="name_desc">Name - Z → A</SelectItem>
-                            <SelectItem value="last_seen_recent">Last seen - most recent</SelectItem>
-                            <SelectItem value="last_seen_oldest">Last seen - least recent</SelectItem>
+                            <SelectItem value="name_asc">姓名 - A → Z</SelectItem>
+                            <SelectItem value="name_desc">姓名 - Z → A</SelectItem>
+                            <SelectItem value="last_seen_recent">最近在线 - 最近</SelectItem>
+                            <SelectItem value="last_seen_oldest">最近在线 - 最早</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -323,7 +323,7 @@ export default function NewChatDialog({ open, onOpenChange }: NewChatDialogProps
                                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
                                     <Search className="size-8 opacity-30" />
                                     <p className="text-sm">
-                                        {isSearching ? "No users found" : "No new people to chat with"}
+                                        {isSearching ? "未找到用户" : "暂无可对话的新用户"}
                                     </p>
                                 </div>
                             )}

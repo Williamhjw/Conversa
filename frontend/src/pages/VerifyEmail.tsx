@@ -122,7 +122,7 @@ export default function VerifyEmail() {
                     <div className="space-y-2">
                         <h1 className="text-4xl font-bold tracking-tight">Conversa</h1>
                         <p className="text-white/70 text-lg leading-relaxed">
-                            One last step — verify your email to get started.
+                            最后一步 — 验证您的邮箱即可开始使用。
                         </p>
                     </div>
                 </div>
@@ -138,11 +138,11 @@ export default function VerifyEmail() {
                             <MailCheck className="w-7 h-7 text-primary" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="text-2xl font-bold tracking-tight">Verify your email</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">验证您的邮箱</h2>
                             <p className="text-muted-foreground text-sm">
                                 {otpSent
-                                    ? <>We sent a 6-digit code to <span className="font-medium text-foreground">{maskedEmail}</span></>
-                                    : "Sending verification code to your email…"}
+                                    ? <>我们已向 <span className="font-medium text-foreground">{maskedEmail}</span> 发送了6位验证码</>
+                                    : "正在向您的邮箱发送验证码…"}
                             </p>
                         </div>
                     </div>
@@ -169,7 +169,7 @@ export default function VerifyEmail() {
                             </div>
                             {!otpSent && sending && (
                                 <p className="text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                                    <Spinner className="w-4 h-4" /> Sending code…
+                                    <Spinner className="w-4 h-4" /> 正在发送验证码…
                                 </p>
                             )}
                         </div>
@@ -180,7 +180,7 @@ export default function VerifyEmail() {
                             disabled={loading || otpCode.length !== 6 || !otpSent}
                         >
                             {loading ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                            {loading ? "Verifying…" : "Verify Email"}
+                            {loading ? "验证中…" : "验证邮箱"}
                         </Button>
 
                         {/* Resend */}
@@ -192,7 +192,7 @@ export default function VerifyEmail() {
                                 className="flex items-center gap-1 text-sm text-primary hover:opacity-80 disabled:opacity-40 transition-opacity"
                             >
                                 <RotateCcw className="w-3 h-3" />
-                                {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
+                                {countdown > 0 ? `${countdown}秒后重发` : "重新发送验证码"}
                             </button>
                         </div>
                     </form>
@@ -200,7 +200,7 @@ export default function VerifyEmail() {
                     {/* Logout */}
                     <div className="pt-2 border-t">
                         <p className="text-center text-sm text-muted-foreground mb-3">
-                            Wrong account?
+                            账号不对？
                         </p>
                         <Button
                             variant="outline"
@@ -208,7 +208,7 @@ export default function VerifyEmail() {
                             onClick={handleLogout}
                         >
                             <LogOut className="w-4 h-4 mr-2" />
-                            Log out
+                            退出登录
                         </Button>
                     </div>
                 </div>

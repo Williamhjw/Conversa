@@ -6,7 +6,7 @@ const Conversation = require("../Models/Conversation.js");
 const { JWT_SECRET, EMAIL, PASSWORD } = require("../secrets.js");
 
 let mailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
+  host: 'smtp.qq.com',
   port: 465,
   secure: true,
   auth: {

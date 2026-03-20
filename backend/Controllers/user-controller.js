@@ -1,25 +1,23 @@
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const { S3Client } = require("@aws-sdk/client-s3");
-const { createPresignedPost } = require("@aws-sdk/s3-presigned-post");
+const qiniu = require("qiniu");
 const User = require("../Models/User.js");
 const Conversation = require("../Models/Conversation.js");
 const {
-  AWS_BUCKET_NAME,
-  AWS_SECRET,
-  AWS_ACCESS_KEY
+  QINIU_ACCESS_KEY,
+  QINIU_SECRET_KEY,
+  QINIU_BUCKET,
+  QINIU_DOMAIN
 } = require("../secrets.js");
 
-const s3Client = new S3Client({
-  credentials: {
-    accessKeyId: AWS_ACCESS_KEY,
-    secretAccessKey: AWS_SECRET,
-  },
-  region: "ap-south-1",
+const mac = new qiniu.auth.digest.Mac(QINIU_ACCESS_KEY, QINIU_SECRET_KEY);
+const config = new qiniu.conf.Config();
+const putPolicy = new qiniu.rs.PutPolicy({
+  scope: QINIU_BUCKET,
+  expires: 900, // 15 minutes
 });
 
 const getPresignedUrl = async (req, res) => {
-
   const filename = req.query.filename;
   const filetype = req.query.filetype;
 
@@ -36,17 +34,25 @@ const getPresignedUrl = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const { url, fields } = await createPresignedPost(s3Client, {
-      Bucket: AWS_BUCKET_NAME,
-      Key: `conversa/${userId}/${crypto.randomUUID()}-${filename}`,
-      Conditions: [["content-length-range", 0, 5 * 1024 * 1024]],
-      Fields: {
-        success_action_status: "201",
-      },
-      Expires: 15 * 60,
-    });
+    // Generate upload token
+    const uploadToken = putPolicy.uploadToken(mac);
 
-    return res.status(200).json({ url, fields });
+    // Generate unique key for the file
+    const key = `conversa/${userId}/${crypto.randomUUID()}-${filename}`;
+
+    // Get upload URL (Qiniu uses zone-based URLs)
+    const zone = qiniu.zone.Zone_z0; // 华东机房，可根据需要调整
+    const formUploader = new qiniu.form_up.FormUploader(config);
+    const putExtra = new qiniu.form_up.PutExtra();
+    putExtra.fname = filename;
+    putExtra.mimeType = filetype;
+
+    return res.status(200).json({
+      token: uploadToken,
+      key: key,
+      uploadUrl: `https://upload.qiniup.com`,
+      domain: QINIU_DOMAIN,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

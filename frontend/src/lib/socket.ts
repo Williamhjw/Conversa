@@ -12,6 +12,23 @@ const SOCKET_URL: string =
 const socket = io(SOCKET_URL, {
     autoConnect: false,
     auth: { token: localStorage.getItem("auth-token") ?? "" },
+    transports: ["websocket", "polling"],
+});
+
+socket.on("connect", () => {
+    console.log("Socket connected:", socket.id);
+});
+
+socket.on("disconnect", (reason) => {
+    console.log("Socket disconnected:", reason);
+});
+
+socket.on("connect_error", (error) => {
+    console.error("Socket connection error:", error.message);
+});
+
+socket.onAny((event, ...args) => {
+    console.log("Socket event received:", event, args);
 });
 
 /* ─── payload types ─────────────────────────────────────────────────────── */
@@ -61,6 +78,7 @@ export const emitLeaveChat = (roomId: string): void => {
 };
 
 export const emitSendMessage = ({ conversationId, text, imageUrl, replyTo }: SendMessagePayload): void => {
+    console.log("Sending message:", { conversationId, text, imageUrl, replyTo });
     socket.emit("send-message", { conversationId, text, imageUrl, replyTo });
 };
 

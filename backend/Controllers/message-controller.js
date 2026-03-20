@@ -1,4 +1,3 @@
-const { GoogleGenAI } = require("@google/genai");
 const Message = require("../Models/Message.js");
 const Conversation = require("../Models/Conversation.js");
 const User = require("../Models/User.js");
@@ -6,8 +5,6 @@ const {
   GEMINI_MODEL,
   GEMINI_API_KEY,
 } = require("../secrets.js");
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const allMessage = async (req, res) => {
   try {
@@ -133,7 +130,7 @@ const clearChat = async (req, res) => {
 /**
  * Async generator that:
  * 1. Saves the user message to DB immediately → yields { type: "user-message", message }
- * 2. Streams the Gemini response chunk-by-chunk → yields { type: "chunk", text }
+ * 2. Streams the GLM-4 response chunk-by-chunk → yields { type: "chunk", text }
  * 3. Saves the completed bot message → yields { type: "done", message }
  * Yields { type: "error" } on failure so the caller can clean up.
  */
@@ -167,28 +164,68 @@ const streamAiResponse = async function* (text, senderId, conversationId) {
   const history = messagelist
     .reverse()
     .map((m) => ({
-      role: m.senderId.toString() === senderId.toString() ? "user" : "model",
-      parts: [{ text: m.text }],
+      role: m.senderId.toString() === senderId.toString() ? "user" : "assistant",
+      content: m.text,
     }));
-
-  const chat = ai.chats.create({
-    model: GEMINI_MODEL,
-    history,
-    config: { temperature: 0.5, maxOutputTokens: 1024 },
-  });
 
   let fullText = "";
   try {
-    const stream = await chat.sendMessageStream({ message: text });
-    for await (const chunk of stream) {
-      const chunkText = chunk.text || "";
-      if (chunkText) {
-        fullText += chunkText;
-        yield { type: "chunk", text: chunkText };
+    const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GEMINI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GEMINI_MODEL,
+        messages: [
+          ...history,
+          { role: "user", content: text }
+        ],
+        stream: true,
+        temperature: 0.5,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("GLM API error:", errorText);
+      await Message.findByIdAndDelete(userMessage._id);
+      yield { type: "error", userMessageId: userMessage._id.toString() };
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content || "";
+            if (content) {
+              fullText += content;
+              yield { type: "chunk", text: content };
+            }
+          } catch (e) {
+            // Ignore parse errors for empty lines
+          }
+        }
       }
     }
   } catch (err) {
-    console.error("Gemini stream error:", err.message);
+    console.error("GLM stream error:", err.message);
     // Roll back the user message so the conversation stays consistent
     await Message.findByIdAndDelete(userMessage._id);
     yield { type: "error", userMessageId: userMessage._id.toString() };

@@ -13,18 +13,18 @@ const Home = () => {
                 {/* title */}
                 <div className="text-center">
                     <h1 className="font-bold text-6xl lg:text-8xl">Conversa</h1>
-                    <p className="text-xl">Online Chatting App</p>
+                    <p className="text-xl">在线聊天应用</p>
                 </div>
                 {/* action buttons */}
                 <div className="flex items-center gap-2">
                     <Link to="/login">
                         <Button className="p-4 lg:p-6 text-base lg:text-xl" size={"lg"} variant={"secondary"}>
-                            Login
+                            登录
                         </Button>
                     </Link>
                     <Link to="/signup">
                         <Button size={"lg"} className="p-4 lg:p-6 text-base lg:text-xl bg-primary/90 hover:bg-primary">
-                            Signup
+                            注册
                         </Button>
                     </Link>
                 </div>

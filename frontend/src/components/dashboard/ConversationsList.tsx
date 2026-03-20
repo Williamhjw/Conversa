@@ -31,12 +31,12 @@ function getOtherMember(conv: Conversation, myId: string): User | undefined {
 function relativeTime(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime()
     const mins = Math.floor(diff / 60_000)
-    if (mins < 1) return "now"
-    if (mins < 60) return `${mins}m`
+    if (mins < 1) return "刚刚"
+    if (mins < 60) return `${mins}分钟`
     const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h`
+    if (hrs < 24) return `${hrs}小时`
     const days = Math.floor(hrs / 24)
-    if (days < 7) return `${days}d`
+    if (days < 7) return `${days}天`
     return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
@@ -80,10 +80,10 @@ interface RowProps {
 function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, blockedUsers }: RowProps) {
     const other = getOtherMember(conv, myId)
     const unread = conv.unreadCounts.find((u) => u.userId === myId)?.count ?? 0
-    const name = other?.name ?? "Unknown"
+    const name = other?.name ?? "未知"
     const preview = isTyping
-        ? "typing…"
-        : conv.latestmessage || "Start a conversation"
+        ? "正在输入…"
+        : conv.latestmessage || "开始对话"
     const dropdownOpen = openDropdownId === conv._id
     const isBlocked = other ? blockedUsers.has(other._id) : false
     const isPinned = conv.isPinned
@@ -114,7 +114,7 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onTogglePin(conv._id) }}
                             >
                                 {isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
-                                {isPinned ? "Unpin" : "Pin"}
+                                {isPinned ? "取消置顶" : "置顶"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -122,14 +122,14 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                                 variant="destructive"
                             >
                                 <ShieldX className="size-4" />
-                                {isBlocked ? "Unblock user" : "Block user"}
+                                {isBlocked ? "解除屏蔽" : "屏蔽用户"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onClearChat(conv._id) }}
                                 variant="destructive"
                             >
                                 <Trash2 className="size-4" />
-                                Clear chat
+                                清空聊天
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -220,30 +220,28 @@ export default function ConversationsList() {
             if (isBlocked) {
                 await userApi.unblockUser(userId)
                 setBlockedUsers((prev) => { const s = new Set(prev); s.delete(userId); return s })
-                toast.success(`${userName} has been unblocked`)
+                toast.success(`${userName} 已解除屏蔽`)
             } else {
                 await userApi.blockUser(userId)
                 setBlockedUsers((prev) => new Set(prev).add(userId))
-                toast.success(`${userName} has been blocked`)
+                toast.success(`${userName} 已被屏蔽`)
             }
             setOpenDropdownId(null)
         } catch {
-            toast.error(isBlocked ? "Failed to unblock user" : "Failed to block user")
+            toast.error(isBlocked ? "解除屏蔽失败" : "屏蔽用户失败")
         }
     }
 
-    // clear chat from the conversations list
     const handleClearChatRow = async (convId: string) => {
         try {
             await messageApi.clearChat(convId)
             setOpenDropdownId(null)
-            toast.success("Chat cleared")
+            toast.success("聊天已清空")
         } catch {
-            toast.error("Failed to clear chat")
+            toast.error("清空聊天失败")
         }
     }
 
-    // pin / unpin a conversation
     const handleTogglePin = async (convId: string) => {
         try {
             const { isPinned } = await conversationApi.togglePin(convId)
@@ -251,14 +249,13 @@ export default function ConversationsList() {
                 const updated = prev.map((c) =>
                     c._id === convId ? { ...c, isPinned } : c
                 )
-                // re-sort: pinned first
                 return [...updated.filter((c) => c.isPinned && c._id === convId), ...updated.filter((c) => c.isPinned && c._id !== convId), ...(updated.filter((c) => !c.isPinned).sort(
                     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()))]
             })
             setOpenDropdownId(null)
-            toast.success(isPinned ? "Conversation pinned" : "Conversation unpinned")
+            toast.success(isPinned ? "对话已置顶" : "对话已取消置顶")
         } catch {
-            toast.error("Failed to update pin")
+            toast.error("置顶操作失败")
         }
     }
 
@@ -312,7 +309,7 @@ export default function ConversationsList() {
 
             {/* header */}
             <div className="flex items-center justify-between px-4 py-0 lg:py-4">
-                <h1 className="text-lg font-bold">Chats</h1>
+                <h1 className="text-lg font-bold">聊天</h1>
                 <Button variant={"outline"} size={"icon"} onClick={() => setNewChatOpen(true)}>
                     <SquarePen className="size-4" />
                 </Button>
@@ -320,12 +317,11 @@ export default function ConversationsList() {
 
             <NewChatDialog open={newChatOpen} onOpenChange={setNewChatOpen} />
 
-            {/* Search bar */}
             <div className="px-3 pt-2 pb-2 border-b">
                 <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                     <Input
-                        placeholder="Search conversations…"
+                        placeholder="搜索对话…"
                         className="pl-8 h-8 text-sm bg-muted/50 border-0 focus-visible:ring-1"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -335,7 +331,6 @@ export default function ConversationsList() {
 
             {/* List */}
             <div className="flex-1 overflow-y-auto">
-                {/* Filter pills */}
                 <div className="flex gap-1.5 px-3 pt-2 pb-1">
                     {(["all", "unread", "online"] as const).map((f) => (
                         <Button
@@ -348,7 +343,7 @@ export default function ConversationsList() {
                                     : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                             )}
                         >
-                            {f === "all" ? "All" : f === "unread" ? "Unread" : "Online"}
+                            {f === "all" ? "全部" : f === "unread" ? "未读" : "在线"}
                         </Button>
                     ))}
                 </div>
@@ -360,12 +355,12 @@ export default function ConversationsList() {
                             <MessageCircle className="size-8 opacity-30" />
                             <p className="text-sm">
                                 {query
-                                    ? "No results found"
+                                    ? "未找到结果"
                                     : filter === "unread"
-                                        ? "No unread conversations"
+                                        ? "没有未读对话"
                                         : filter === "online"
-                                            ? "Nobody is online right now"
-                                            : "No conversations yet"}
+                                            ? "当前没有人在线"
+                                            : "暂无对话"}
                             </p>
                         </div>
                     ) : (

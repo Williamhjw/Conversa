@@ -102,11 +102,11 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
         const file = e.target.files?.[0]
         if (!file) return
         if (!file.type.startsWith("image/")) {
-            toast.error("Only image files are supported.")
+            toast.error("仅支持图片文件。")
             return
         }
         if (file.size > 5 * 1024 * 1024) {
-            toast.error("Image must be smaller than 5 MB.")
+            toast.error("图片大小不能超过 5 MB。")
             return
         }
         setSelectedFile(file)
@@ -119,26 +119,26 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
         if (!selectedFile) return
         setUploading(true)
         try {
-            const { url, fields } = await userApi.getPresignedUrl(
+            const { token, key, domain } = await userApi.getPresignedUrl(
                 selectedFile.name,
                 selectedFile.type
-            ) as { url: string; fields: Record<string, string> }
+            ) as { token: string; key: string; domain: string }
 
             const formData = new FormData()
-            Object.entries(fields).forEach(([k, v]) => formData.append(k, v))
-            formData.append("file", selectedFile) // file must be last
+            formData.append("token", token)
+            formData.append("key", key)
+            formData.append("file", selectedFile)
 
-            const uploadRes = await fetch(url, { method: "POST", body: formData })
-            if (!uploadRes.ok && uploadRes.status !== 201) throw new Error("Upload failed")
+            const uploadRes = await fetch("https://upload.qiniup.com", { method: "POST", body: formData })
+            if (!uploadRes.ok) throw new Error("Upload failed")
 
-            // AWS SDK v3 returns the object key as fields.key (lowercase)
-            const imageUrl = `${url}${fields.key}`
+            const imageUrl = `${domain}/${key}`
             const trimmedCaption = caption.trim()
             emitSendMessage({ conversationId, imageUrl, ...(trimmedCaption && { text: trimmedCaption }), replyTo: replyToMessage?._id ?? null })
             onCancelReply?.()
             closeImageDialog()
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to send image.")
+            toast.error(err instanceof Error ? err.message : "发送图片失败。")
         } finally {
             setUploading(false)
         }
@@ -159,8 +159,8 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     <ShieldX className="size-4 shrink-0" />
                     <span>
                         {isBlocked
-                            ? "You have blocked this user. Unblock to send messages."
-                            : "You can't send messages to this user."}
+                            ? "您已屏蔽该用户。解除屏蔽后才能发送消息。"
+                            : "您无法向该用户发送消息。"}
                     </span>
                 </div>
             ) : (
@@ -170,18 +170,18 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     <div className="flex items-center gap-3 px-4 pt-2.5 pb-1">
                         <div className="flex-1 min-w-0 pl-2 border-l-2 border-primary">
                             <p className="text-xs font-semibold text-primary truncate">
-                                Replying to {replyToMessage.senderId === myId ? "yourself" : (receiverName || "them")}
+                                回复 {replyToMessage.senderId === myId ? "自己" : (receiverName || "对方")}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
                                 {replyToMessage.softDeleted
-                                    ? "This message was deleted"
-                                    : replyToMessage.text || "🖼️ Photo"}
+                                    ? "此消息已删除"
+                                    : replyToMessage.text || "🖼️ 图片"}
                             </p>
                         </div>
                         <button
                             onClick={onCancelReply}
                             className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Cancel reply"
+                            title="取消回复"
                         >
                             <X className="size-4" />
                         </button>
@@ -196,7 +196,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     size="lg"
                     className="shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => fileInputRef.current?.click()}
-                    title="Send image"
+                    title="发送图片"
                 >
                     <ImagePlus className="size-5" />
                 </Button>
@@ -211,7 +211,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                 {/* Text area */}
                 <Textarea
                     ref={textareaRef}
-                    placeholder="Type a message..."
+                    placeholder="输入消息…"
                     className={cn(
                         "flex-1 min-h-10 max-h-36 resize-none text-base rounded-xl thin-scrollbar",
                     )}
@@ -228,7 +228,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     className="shrink-0 hover:bg-primary/90 text-white rounded-xl"
                     onClick={handleSendText}
                     disabled={!text.trim()}
-                    title="Send"
+                    title="发送"
                 >
                     <ArrowRight className="size-5" />
                 </Button>
@@ -240,13 +240,13 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
             <Dialog open={imageDialogOpen} onOpenChange={(open) => { if (!open) closeImageDialog() }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Send image</DialogTitle>
+                        <DialogTitle>发送图片</DialogTitle>
                     </DialogHeader>
                     <div className="flex items-center justify-center rounded-lg overflow-hidden bg-muted max-h-80">
                         {previewUrl && (
                             <img
                                 src={previewUrl}
-                                alt="preview"
+                                alt="预览"
                                 className="max-h-80 object-contain"
                             />
                         )}
@@ -255,7 +255,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
 
                     {/* Caption input */}
                     <Textarea
-                        placeholder="Add a caption… (optional)"
+                        placeholder="添加说明… (可选)"
                         className={cn(
                             "resize-none text-sm min-h-10 max-h-28 thin-scrollbar",
                         )}
@@ -274,7 +274,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
 
                     <DialogFooter className="flex items-center gap-2">
                         <Button variant="outline" onClick={closeImageDialog} disabled={uploading}>
-                            Cancel
+                            取消
                         </Button>
                         <Button
                             className="bg-primary hover:bg-primary/90 text-white"
@@ -282,7 +282,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                             disabled={uploading}
                         >
                             {uploading ? <Spinner className="size-4 mr-1" /> : ""}
-                            {uploading ? "Sending…" : "Send"}
+                            {uploading ? "发送中…" : "发送"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

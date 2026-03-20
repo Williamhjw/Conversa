@@ -15,29 +15,29 @@ import { Card } from "@/components/ui/card"
 // Floating feature cards shown on large screens
 const spotlights = [
     {
-        title: "Lightning fast",
-        desc: "Messages delivered instantly via WebSocket connections.",
+        title: "极速传输",
+        desc: "通过 WebSocket 连接即时传递消息。",
         icon: Zap,
         side: "left" as const,
         top: "20%",
     },
     {
-        title: "Private & secure",
-        desc: "Your conversations stay between you and the people you trust.",
+        title: "隐私安全",
+        desc: "您的对话只保留在您信任的人之间。",
         icon: Shield,
         side: "left" as const,
         top: "52%",
     },
     {
-        title: "Personal AI Chatbot",
-        desc: "Chat with your own AI assistant, powered by Gemini.",
+        title: "个人AI助手",
+        desc: "与您专属的AI助手聊天，由 GLM 4.7 驱动。",
         icon: Bot,
         side: "right" as const,
         top: "20%",
     },
     {
-        title: "Passwordless login",
-        desc: "Sign in instantly with a one-time code sent to your inbox.",
+        title: "无密码登录",
+        desc: "通过发送到您邮箱的一次性验证码快速登录。",
         icon: MessageCircle,
         side: "right" as const,
         top: "52%",
@@ -87,7 +87,7 @@ export default function Login() {
     const handlePasswordLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!pwEmail || !password) {
-            toast.error("Please fill in all fields.")
+            toast.error("请填写所有字段。")
             return
         }
         setPwLoading(true)
@@ -95,7 +95,7 @@ export default function Login() {
             await login(pwEmail.trim(), password)
             navigate("/user/conversations", { replace: true })
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Login failed. Try again.")
+            toast.error(err instanceof Error ? err.message : "登录失败，请重试。")
         } finally {
             setPwLoading(false)
         }
@@ -104,7 +104,7 @@ export default function Login() {
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!otpEmail) {
-            toast.error("Please enter your email address.")
+            toast.error("请输入您的邮箱地址。")
             return
         }
         setOtpLoading(true)
@@ -112,9 +112,9 @@ export default function Login() {
             await authApi.sendOtp(otpEmail.trim())
             setOtpSent(true)
             setOtpCountdown(60)
-            toast.success("OTP sent! Check your inbox.")
+            toast.success("验证码已发送！请查收您的邮箱。")
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to send OTP.")
+            toast.error(err instanceof Error ? err.message : "发送验证码失败。")
         } finally {
             setOtpLoading(false)
         }
@@ -123,7 +123,7 @@ export default function Login() {
     const handleOtpLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         if (otpCode.length !== 6) {
-            toast.error("Please enter the complete 6-digit OTP.")
+            toast.error("请输入完整的6位验证码。")
             return
         }
         setOtpLoading(true)
@@ -131,7 +131,7 @@ export default function Login() {
             await loginWithOtp(otpEmail.trim(), otpCode)
             navigate("/user/conversations", { replace: true })
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Invalid OTP. Try again.")
+            toast.error(err instanceof Error ? err.message : "验证码无效，请重试。")
         } finally {
             setOtpLoading(false)
         }
@@ -144,9 +144,9 @@ export default function Login() {
         try {
             await authApi.sendOtp(otpEmail.trim())
             setOtpCountdown(60)
-            toast.success("OTP resent! Check your inbox.")
+            toast.success("验证码已重新发送！请查收您的邮箱。")
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to resend OTP.")
+            toast.error(err instanceof Error ? err.message : "重新发送验证码失败。")
         } finally {
             setOtpLoading(false)
         }
@@ -192,7 +192,7 @@ export default function Login() {
                                 Conversa
                             </h1>
                             <p className="mt-1.5 text-sm text-muted-foreground">
-                                Chat with anyone, anywhere, instantly.
+                                随时随地，即时聊天。
                             </p>
                         </div>
                     </div>
@@ -200,21 +200,21 @@ export default function Login() {
                     {/* Form card */}
                     <Card className="rounded-2xl border border-border/60 bg-card shadow-xl shadow-black/5 dark:shadow-black/25 p-6">
                         <div className="mb-5">
-                            <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">Sign in to your account to continue</p>
+                            <h2 className="text-2xl font-semibold tracking-tight">欢迎回来</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">登录您的账户以继续</p>
                         </div>
 
                         <Tabs defaultValue="password" className="w-full">
                             <TabsList className="w-full grid grid-cols-2 mb-5">
-                                <TabsTrigger value="password">Password</TabsTrigger>
-                                <TabsTrigger value="otp">OTP Login</TabsTrigger>
+                                <TabsTrigger value="password">密码登录</TabsTrigger>
+                                <TabsTrigger value="otp">验证码登录</TabsTrigger>
                             </TabsList>
 
                             {/* ── Password Tab ───────────────────────── */}
                             <TabsContent value="password">
                                 <form onSubmit={handlePasswordLogin} className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="pw-email">Email address</Label>
+                                        <Label htmlFor="pw-email">邮箱地址</Label>
                                         <Input
                                             id="pw-email"
                                             type="email"
@@ -226,7 +226,7 @@ export default function Login() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="pw-password">Password</Label>
+                                        <Label htmlFor="pw-password">密码</Label>
                                         <div className="relative">
                                             <Input
                                                 id="pw-password"
@@ -254,7 +254,7 @@ export default function Login() {
                                         disabled={pwLoading}
                                     >
                                         {pwLoading ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                                        {pwLoading ? "Signing in…" : "Sign in"}
+                                        {pwLoading ? "登录中…" : "登录"}
                                     </Button>
                                 </form>
                             </TabsContent>
@@ -265,7 +265,7 @@ export default function Login() {
                                     {!otpSent ? (
                                         <form onSubmit={handleSendOtp} className="space-y-4">
                                             <div className="space-y-1.5">
-                                                <Label htmlFor="otp-email">Email address</Label>
+                                                <Label htmlFor="otp-email">邮箱地址</Label>
                                                 <Input
                                                     id="otp-email"
                                                     type="email"
@@ -277,7 +277,7 @@ export default function Login() {
                                                 />
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                We'll send a one-time password to your email. Valid for 5 minutes.
+                                                我们将向您的邮箱发送一次性验证码，有效期5分钟。
                                             </p>
                                             <Button
                                                 type="submit"
@@ -285,16 +285,16 @@ export default function Login() {
                                                 disabled={otpLoading}
                                             >
                                                 {otpLoading ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                                                {otpLoading ? "Sending OTP…" : "Send OTP"}
+                                                {otpLoading ? "发送中…" : "发送验证码"}
                                             </Button>
                                         </form>
                                     ) : (
                                         <form onSubmit={handleOtpLogin} className="space-y-4">
                                             <div className="space-y-2.5">
                                                 <div className="flex items-center justify-between">
-                                                    <Label>Enter OTP</Label>
+                                                    <Label>输入验证码</Label>
                                                     <span className="text-xs text-muted-foreground">
-                                                        Sent to{" "}
+                                                        已发送至{" "}
                                                         <span className="font-medium text-foreground">{otpEmail}</span>
                                                     </span>
                                                 </div>
@@ -322,7 +322,7 @@ export default function Login() {
                                                 disabled={otpLoading || otpCode.length !== 6}
                                             >
                                                 {otpLoading ? <Spinner className="w-4 h-4 mr-2" /> : null}
-                                                {otpLoading ? "Verifying…" : "Login with OTP"}
+                                                {otpLoading ? "验证中…" : "验证码登录"}
                                             </Button>
                                             <div className="flex items-center justify-between text-xs">
                                                 <button
@@ -330,7 +330,7 @@ export default function Login() {
                                                     onClick={() => { setOtpSent(false); setOtpCode("") }}
                                                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                                                 >
-                                                    ← Change email
+                                                    ← 更换邮箱
                                                 </button>
                                                 <button
                                                     type="button"
@@ -339,7 +339,7 @@ export default function Login() {
                                                     className="flex items-center gap-1 hover:opacity-80 disabled:opacity-40 transition-opacity"
                                                 >
                                                     <RotateCcw className="w-3 h-3" />
-                                                    {otpCountdown > 0 ? `Resend in ${otpCountdown}s` : "Resend OTP"}
+                                                    {otpCountdown > 0 ? `${otpCountdown}秒后重发` : "重新发送"}
                                                 </button>
                                             </div>
                                         </form>
@@ -352,15 +352,15 @@ export default function Login() {
                     {/* Footer links */}
                     <div className="flex flex-col items-center gap-3">
                         <p className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{" "}
+                            还没有账户？{" "}
                             <Link to="/signup" className="font-medium text-primary hover:opacity-80 transition-opacity">
-                                Create one
+                                创建一个
                             </Link>
                         </p>
                         <Link to="/">
                             <Button variant="link" size="sm" className="text-muted-foreground text-xs h-8">
                                 <ArrowLeft className="w-3 h-3 mr-1" />
-                                Back to home
+                                返回首页
                             </Button>
                         </Link>
                     </div>
