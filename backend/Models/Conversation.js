@@ -19,6 +19,31 @@ const ConversationSchema = new mongoose.Schema(
         },
       },
     ],
+    isGroup: {
+      type: Boolean,
+      default: false,
+    },
+    groupName: {
+      type: String,
+      default: "",
+    },
+    groupAvatar: {
+      type: String,
+      default: "",
+    },
+    groupDescription: {
+      type: String,
+      default: "",
+    },
+    groupOwner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    groupAdmins: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
   },
   {
     timestamps: true,

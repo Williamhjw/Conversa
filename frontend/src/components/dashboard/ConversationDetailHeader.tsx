@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, MoreVertical, Bot, Trash2, CheckCircle, Ban } from "lucide-react"
+import { ArrowLeft, MoreVertical, Bot, Trash2, CheckCircle, Ban, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { GroupAvatar } from "@/components/ui/group-avatar"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -28,9 +29,20 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator"
 import type { User } from "@/hooks/use-auth"
+import GroupDetailsDialog from "./GroupDetailsDialog"
+
+interface GroupInfo {
+    _id: string
+    isGroup: boolean
+    groupName: string
+    groupAvatar: string
+    groupDescription: string
+    members: User[]
+}
 
 interface Props {
     receiver: User | null
+    group: GroupInfo | null
     onClearChat: () => void
     onSelectMode: () => void
     isBlockedByMe: boolean
@@ -57,13 +69,18 @@ function lastSeenText(receiver: User | null): string {
     return `${new Date(receiver.lastSeen).toLocaleDateString(undefined, { month: "short", day: "numeric" })}在线`
 }
 
-export default function ConversationDetailHeader({ receiver, onClearChat, onSelectMode, isBlockedByMe, onBlock, onUnblock }: Props) {
+export default function ConversationDetailHeader({ receiver, group, onClearChat, onSelectMode, isBlockedByMe, onBlock, onUnblock }: Props) {
     const navigate = useNavigate()
     const [profileOpen, setProfileOpen] = useState(false)
     const [clearOpen, setClearOpen] = useState(false)
+    const [groupDetailsOpen, setGroupDetailsOpen] = useState(false)
 
-    const name = receiver?.name ?? "..."
-    const statusText = lastSeenText(receiver)
+    const isGroup = !!group?.isGroup
+    const name = isGroup ? group.groupName : (receiver?.name ?? "...")
+    const avatar = isGroup ? group.groupAvatar : receiver?.profilePic
+    const statusText = isGroup 
+        ? `${group?.members?.length || 0} 位成员` 
+        : lastSeenText(receiver)
 
     return (
         <>
@@ -80,17 +97,21 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
 
                 {/* Avatar + name — clickable to open profile */}
                 <button
-                    onClick={() => setProfileOpen(true)}
+                    onClick={() => isGroup ? setGroupDetailsOpen(true) : setProfileOpen(true)}
                     className="flex items-center gap-2.5 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
                 >
                     <div className="relative shrink-0">
-                        <Avatar className="size-9">
-                            <AvatarImage src={receiver?.profilePic} alt={name} />
-                            <AvatarFallback className="bg-primary/15  text-xs font-semibold">
-                                {receiver?.isBot ? <Bot className="size-4" /> : initials(name)}
-                            </AvatarFallback>
-                        </Avatar>
-                        {(receiver?.isBot || receiver?.isOnline) && (
+                        {isGroup ? (
+                            <GroupAvatar members={group?.members || []} size={36} />
+                        ) : (
+                            <Avatar className="size-9">
+                                <AvatarImage src={avatar} alt={name} />
+                                <AvatarFallback className="bg-primary/15 text-xs font-semibold">
+                                    {receiver?.isBot ? <Bot className="size-4" /> : initials(name)}
+                                </AvatarFallback>
+                            </Avatar>
+                        )}
+                        {!isGroup && (receiver?.isBot || receiver?.isOnline) && (
                             <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-green-500 ring-2 ring-background" />
                         )}
                     </div>
@@ -114,8 +135,17 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                             <CheckCircle className="size-4" />
                             选择消息
                         </DropdownMenuItem>
+                        {isGroup && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setGroupDetailsOpen(true)}>
+                                    <Users className="size-4" />
+                                    群组详情
+                                </DropdownMenuItem>
+                            </>
+                        )}
                         <DropdownMenuSeparator />
-                        {!receiver?.isBot && (
+                        {!isGroup && !receiver?.isBot && (
                             isBlockedByMe ? (
                                 <DropdownMenuItem onClick={onUnblock}>
                                     <Ban className="size-4" />
@@ -179,13 +209,21 @@ export default function ConversationDetailHeader({ receiver, onClearChat, onSele
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Group details dialog */}
+            <GroupDetailsDialog 
+                open={groupDetailsOpen} 
+                onOpenChange={setGroupDetailsOpen} 
+                groupId={group?._id || null} 
+            />
+
             {/* Clear chat confirmation */}
             <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>清空聊天</AlertDialogTitle>
                         <AlertDialogDescription>
-                            这将从您的视图中移除所有消息。对方仍然可以看到他们的消息。
+                            这将从您的视图中移除所有消息。{isGroup ? "其他成员仍然可以看到消息。" : "对方仍然可以看到他们的消息。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

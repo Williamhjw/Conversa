@@ -15,6 +15,12 @@ export type Conversation = {
     createdAt: string;
     updatedAt: string;
     isPinned: boolean;
+    isGroup?: boolean;
+    groupName?: string;
+    groupAvatar?: string;
+    groupDescription?: string;
+    groupOwner?: User;
+    groupAdmins?: User[];
 };
 
 export const useConversationsProvider = () => {

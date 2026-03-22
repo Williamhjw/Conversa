@@ -22,7 +22,7 @@ interface StarredMessage {
             isBot: boolean
         }>
     } | string
-    senderId: string
+    senderId: string | { _id: string; name: string; profilePic?: string }
     text?: string
     imageUrl?: string
     starredBy: string[]
@@ -63,7 +63,8 @@ function StarredMessageCard({
 }) {
     const conv = typeof msg.conversationId === "object" ? msg.conversationId : null
     const peer = conv?.members?.find((m) => m._id !== myId) ?? null
-    const isMine = msg.senderId === myId
+    const senderId = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId._id
+    const isMine = senderId === myId
 
     const conversationId = conv?._id ?? (typeof msg.conversationId === "string" ? msg.conversationId : "")
 

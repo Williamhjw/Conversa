@@ -59,6 +59,8 @@ export default function SignUp() {
 
     const validate = () => {
         if (!name.trim()) return "请输入您的姓名。"
+        if (name.trim().length < 3) return "姓名至少需要3个字符。"
+        if (name.trim().length > 50) return "姓名不能超过50个字符。"
         if (!email.trim()) return "请输入您的邮箱地址。"
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "请输入有效的邮箱地址。"
         if (password.length < 6) return "密码至少需要6个字符。"
@@ -157,6 +159,7 @@ export default function SignUp() {
                                     onChange={(e) => setName(e.target.value)}
                                     disabled={loading}
                                 />
+                                <p className="text-xs text-muted-foreground">3-50个字符</p>
                             </div>
 
                             <div className="space-y-1.5">

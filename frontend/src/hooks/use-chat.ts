@@ -3,18 +3,24 @@ import type { User } from "./use-auth";
 import { useContext } from "react";
 import { createContext } from "react";
 
+export type SenderInfo = {
+    _id: string;
+    name: string;
+    profilePic?: string;
+};
+
 export type ReplyToPreview = {
     _id: string;
     text?: string;
     imageUrl?: string;
-    senderId: string;
+    senderId: string | SenderInfo;
     softDeleted: boolean;
 };
 
 export type Message = {
     _id: string;
     conversationId: string;
-    senderId: string;
+    senderId: string | SenderInfo;
     text?: string;
     imageUrl?: string;
     seenBy: Array<{ user: string; seenAt: string }>;

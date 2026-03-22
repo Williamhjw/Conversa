@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Bot, LogOut, MessagesSquare, Settings, Star } from "lucide-react"
+import { Bot, Gamepad2, LogOut, MessagesSquare, Settings, Star } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -32,12 +32,18 @@ const NAV_ITEMS = [
         icon: Star,
         tooltip: "收藏的消息",
     },
+    {
+        label: "游戏",
+        href: "/user/games",
+        icon: Gamepad2,
+        tooltip: "游戏",
+    },
 ]
 
 export default function DashboardSidebar() {
     const { user, logout } = useAuth()
     const { conversationsList, aiChatbotConversationId } = useConversations()
-    const { state, isMobile } = useSidebar()
+    const { state, isMobile, setOpenMobile } = useSidebar()
     const location = useLocation()
     const navigate = useNavigate()
 
@@ -49,6 +55,12 @@ export default function DashboardSidebar() {
     const handleLogout = () => {
         logout()
         navigate("/", { replace: true })
+    }
+
+    const handleNavClick = () => {
+        if (isMobile) {
+            setOpenMobile(false)
+        }
     }
 
     const initials = user?.name
@@ -66,7 +78,9 @@ export default function DashboardSidebar() {
                                 const isActive =
                                     href === "/user/conversations"
                                         ? location.pathname.startsWith("/user/conversations")
-                                        : location.pathname === href
+                                        : href === "/user/games"
+                                            ? location.pathname.startsWith("/user/games")
+                                            : location.pathname === href
                                 const isConversations = href === "/user/conversations"
                                 const showBadge = isConversations && unreadChatsCount > 0
                                 return (
@@ -77,7 +91,7 @@ export default function DashboardSidebar() {
                                             title={tooltip}
                                             className={`min-w-10 min-h-10 p-4 ${isActive ? "bg-muted-foreground/10!" : ""}`}
                                         >
-                                            <Link to={href} className="flex items-center gap-2">
+                                            <Link to={href} className="flex items-center gap-2" onClick={handleNavClick}>
                                                 {/* icon — with overlay badge in collapsed/icon mode */}
                                                 <div className="relative shrink-0">
                                                     <Icon className={`mx-0.5 min-h-5 min-w-5 text-muted-foreground`} />
@@ -105,7 +119,7 @@ export default function DashboardSidebar() {
                                     asChild
                                     className={`min-w-10 min-h-10 ${state=="collapsed"&&"rounded-full"} bg-primary hover:bg-primary p-4 border-2 border-primary text-background hover:text-background`}
                                 >
-                                    <Link to={`/user/conversations/${aiChatbotConversationId}`} className="flex items-center gap-2">
+                                    <Link to={`/user/conversations/${aiChatbotConversationId}`} className="flex items-center gap-2" onClick={handleNavClick}>
                                         <div className="relative shrink-0">
                                             <Bot className="mx relative min-h-5 min-w-5" />
                                         </div>
@@ -129,7 +143,7 @@ export default function DashboardSidebar() {
                             title="账户设置"
                             className="min-w-9 min-h-9"
                         >
-                            <Link to={"/user/profile"} className="flex items-center gap-2">
+                            <Link to={"/user/profile"} className="flex items-center gap-2" onClick={handleNavClick}>
                                 <div className="relative shrink-0">
                                     <Settings className="min-h-5 min-w-5 text-muted-foreground" />
                                 </div>

@@ -11,6 +11,7 @@ const {
   unblockUser,
   getBlockStatus,
   deleteAccount,
+  checkDuplicateUsers,
 } = require("../Controllers/user-controller.js");
 
 router.put("/update", fetchuser, updateprofile);
@@ -21,5 +22,6 @@ router.post("/block/:id", fetchuser, blockUser);
 router.delete("/block/:id", fetchuser, unblockUser);
 router.get("/block-status/:id", fetchuser, getBlockStatus);
 router.delete("/delete", fetchuser, deleteAccount);
+router.get("/check-duplicates", fetchuser, checkDuplicateUsers);
 
 module.exports = router;

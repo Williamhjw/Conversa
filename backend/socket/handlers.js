@@ -118,7 +118,6 @@ module.exports = (io, socket, userSocketMap) => {
       console.log("Received message");
 
       const { conversationId, text, imageUrl, replyTo } = data;
-      // Always use the authenticated user as the sender — never trust client-supplied senderId
       const senderId = currentUserId;
 
       const conversation = await Conversation.findById(conversationId).populate(
@@ -126,7 +125,6 @@ module.exports = (io, socket, userSocketMap) => {
       );
       if (!conversation) return;
 
-      // Verify sender is a member of this conversation
       const isMember = conversation.members.some(
         (m) => m._id.toString() === senderId
       );
@@ -138,7 +136,6 @@ module.exports = (io, socket, userSocketMap) => {
       }
 
       // ── AI bot processing ────────────────────────────────────────────────
-      // Use the isBot field instead of an email-suffix heuristic.
       const botMember = conversation.members.find(
         (member) => member._id.toString() !== senderId && member.isBot
       );
@@ -150,9 +147,7 @@ module.exports = (io, socket, userSocketMap) => {
         try {
           for await (const event of streamAiResponse(text, senderId, conversationId)) {
             if (event.type === "user-message") {
-              // Emit real user message (has a proper MongoDB _id)
               io.to(conversationId).emit("receive-message", event.message);
-              // Now start the typing indicator (conversationId required by frontend)
               io.to(conversationId).emit("typing", { typer: botId, conversationId });
             } else if (event.type === "chunk") {
               io.to(conversationId).emit("bot-chunk", { conversationId, tempId, chunk: event.text });
@@ -175,6 +170,79 @@ module.exports = (io, socket, userSocketMap) => {
         return;
       }
 
+      // ── Group chat processing ────────────────────────────────────────────
+      if (conversation.isGroup) {
+        const message = await sendMessageHandler({
+          text,
+          imageUrl,
+          senderId,
+          conversationId,
+          receiverId: null,
+          isReceiverInsideChatRoom: false,
+          replyTo: replyTo || null,
+        });
+
+        console.log(`Group message saved: ${message._id}, conversationId: ${conversationId}, senderId: ${senderId}`);
+
+        io.to(conversationId).emit("receive-message", message);
+
+        const senderSocketIds = userSocketMap.get(senderId);
+        const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
+        if (senderSocketIds && conversationRoom) {
+          const senderInRoom = Array.from(senderSocketIds).some((sid) =>
+            conversationRoom.has(sid)
+          );
+          if (!senderInRoom) {
+            io.to(senderId).emit("receive-message", message);
+          }
+        }
+
+        const senderInfo = conversation.members.find(
+          (m) => m._id.toString() === senderId
+        );
+
+        const updatedConversation = await Conversation.findById(conversationId).populate("members");
+
+        const otherMembers = conversation.members.filter(
+          (m) => m._id.toString() !== senderId
+        );
+
+        for (const member of otherMembers) {
+          const memberId = member._id.toString();
+          const memberSocketIds = userSocketMap.get(memberId);
+
+          let memberInRoom = false;
+          if (memberSocketIds && conversationRoom) {
+            memberInRoom = Array.from(memberSocketIds).some((sid) =>
+              conversationRoom.has(sid)
+            );
+          }
+
+          if (!memberInRoom) {
+            io.to(memberId).emit("receive-message", message);
+            io.to(memberId).emit("new-message-notification", {
+              message,
+              sender: senderInfo,
+              conversation: updatedConversation
+            });
+          }
+
+          if (!memberSocketIds || memberSocketIds.size === 0) {
+            const memberDoc = await User.findById(memberId, "emailNotificationsEnabled email name");
+            if (memberDoc?.emailNotificationsEnabled && memberDoc?.email) {
+              sendMessageEmail(
+                { name: memberDoc.name, email: memberDoc.email },
+                { name: senderInfo.name, profilePic: senderInfo.profilePic },
+                text || null,
+                conversationId
+              );
+            }
+          }
+        }
+
+        return;
+      }
+
       // ── Personal chat processing ─────────────────────────────────────────
       const receiverMember = conversation.members.find(
         (member) => member._id.toString() !== senderId
@@ -184,8 +252,6 @@ module.exports = (io, socket, userSocketMap) => {
       const receiverId = receiverMember._id;
 
       // ── Block check ───────────────────────────────────────────────────────
-      // Prevent sending if (a) the receiver has blocked the sender, or
-      // (b) the sender has blocked the receiver.
       const [receiverDoc, senderDoc] = await Promise.all([
         User.findById(receiverId, "blockedUsers emailNotificationsEnabled email name"),
         User.findById(senderId, "blockedUsers"),
@@ -202,7 +268,6 @@ module.exports = (io, socket, userSocketMap) => {
       }
 
       // Determine if the receiver currently has the conversation room open.
-      // Check ALL of the receiver's sockets so multi-device is handled correctly.
       const receiverSocketIds = userSocketMap.get(receiverId.toString());
       let isReceiverInsideChatRoom = false;
 
@@ -268,9 +333,6 @@ module.exports = (io, socket, userSocketMap) => {
           conversation: conversation
         });
 
-        // Fire-and-forget email notification — only when receiver is completely
-        // offline (no open sockets) and has email notifications enabled.
-        // Never awaited so it adds zero latency to message delivery.
         const isReceiverOffline = !receiverSocketIds || receiverSocketIds.size === 0;
         if (isReceiverOffline && receiverDoc?.emailNotificationsEnabled && receiverDoc?.email) {
           sendMessageEmail(

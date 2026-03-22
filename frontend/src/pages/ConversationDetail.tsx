@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from "react"
+import { useEffect, useRef, useCallback, useState, useMemo, useLayoutEffect } from "react"
 import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
 import { useChat, type Message } from "@/hooks/use-chat"
@@ -26,6 +26,15 @@ import {
 import { toast } from "sonner"
 import type { Conversation } from "@/hooks/use-conversations"
 import type { User } from "@/hooks/use-auth"
+
+interface GroupInfo {
+    _id: string
+    isGroup: boolean
+    groupName: string
+    groupAvatar: string
+    groupDescription: string
+    members: User[]
+}
 
 /* ─── CSS typing indicator ─────────────────────────────────────────────── */
 function TypingIndicator() {
@@ -130,6 +139,8 @@ export default function ConversationDetail() {
     const prevMessageCountRef = useRef(0)
     // Buffer messages-seen events that arrive before the message list is populated
     const pendingSeenRef = useRef<{ seenBy: string; seenAt: string }[]>([])
+    // Track if we should scroll on resize (during initial load)
+    const shouldScrollOnResizeRef = useRef(false)
 
     // Streaming bot response state
     const [streamingBot, setStreamingBot] = useState<{ conversationId: string; tempId: string; text: string } | null>(null)
@@ -139,6 +150,9 @@ export default function ConversationDetail() {
 
     // Highlighted message (jump-to from starred messages)
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+
+    // Group info
+    const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null)
 
     // Block status
     const [fetchedBlockStatus, setBlockStatus] = useState<{ iBlockedThem: boolean; theyBlockedMe: boolean }>({ iBlockedThem: false, theyBlockedMe: false })
@@ -214,18 +228,12 @@ export default function ConversationDetail() {
         })
     }, [])
 
-    const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-        // Use rAF so the scroll runs after the browser has painted the new layout,
-        // preventing the "last message half-visible" issue.
-        requestAnimationFrame(() => {
-            const el = scrollAreaRef.current
-            if (!el) return
-            if (behavior === "instant") {
-                el.scrollTop = el.scrollHeight
-            } else {
-                el.scrollTo({ top: el.scrollHeight, behavior })
-            }
-        })
+    const scrollToBottom = useCallback(() => {
+        const el = scrollAreaRef.current
+        if (!el) return
+        
+        // Direct scroll to bottom - works better on mobile Safari
+        el.scrollTop = el.scrollHeight
     }, [])
 
     // ── load conversation + messages ────────────────────────────────────
@@ -234,19 +242,34 @@ export default function ConversationDetail() {
 
         setIsChatLoading(true)
         setMessageList([])
+        
         setActiveChatId(id)
         pendingSeenRef.current = []
         isInitialLoadRef.current = true
         hasInitiallyScrolledRef.current = false
         prevMessageCountRef.current = 0
+        setGroupInfo(null)
 
         Promise.all([
             conversationApi.get<Conversation>(id),
             messageApi.list(id) as Promise<Message[]>,
         ])
             .then(([conv, msgs]) => {
-                const other = conv.members.find((m: User) => m._id !== user._id)
-                setReceiver(other ?? null)
+                if (conv.isGroup) {
+                    setGroupInfo({
+                        _id: conv._id,
+                        isGroup: conv.isGroup,
+                        groupName: conv.groupName || "群组",
+                        groupAvatar: conv.groupAvatar || "",
+                        groupDescription: conv.groupDescription || "",
+                        members: conv.members,
+                    })
+                    setReceiver(null)
+                } else {
+                    const other = conv.members.find((m: User) => m._id !== user._id)
+                    setReceiver(other ?? null)
+                    setGroupInfo(null)
+                }
                 // Apply any messages-seen events that arrived before the list was ready
                 const pending = pendingSeenRef.current
                 const mergedMsgs = pending.length === 0 ? msgs : msgs.map((m) => {
@@ -284,6 +307,18 @@ export default function ConversationDetail() {
             .finally(() => setIsChatLoading(false))
     }, [id, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // ── scroll to bottom after loading completes ──────────────────────────
+    useEffect(() => {
+        if (!isChatLoading && messageList.length > 0 && !searchParams.get("highlight")) {
+            // Multiple attempts for mobile Safari
+            const delays = [50, 150, 300, 500, 800]
+            const timers = delays.map(delay => 
+                setTimeout(() => scrollToBottom(), delay)
+            )
+            return () => timers.forEach(clearTimeout)
+        }
+    }, [isChatLoading, messageList.length, scrollToBottom, searchParams])
+
     // ── scroll/highlight when opened from starred messages ─────────────────
     useEffect(() => {
         const targetId = searchParams.get("highlight")
@@ -301,7 +336,7 @@ export default function ConversationDetail() {
     }, [searchParams, messageList])
 
     // ── always scroll to bottom when messages change ─────────────────────
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (messageList.length === 0) return
 
         const prevCount = prevMessageCountRef.current
@@ -316,13 +351,48 @@ export default function ConversationDetail() {
             hasInitiallyScrolledRef.current = true
             isInitialLoadRef.current = false
             if (!searchParams.get("highlight")) {
-                scrollToBottom("instant")
+                // Desktop: simple scroll is enough
+                scrollToBottom()
             }
             return
         }
         // A new message was added — scroll to bottom
-        scrollToBottom("smooth")
+        scrollToBottom()
     }, [messageList, scrollToBottom]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Handle resize events (important for mobile viewport changes) ─────
+    useEffect(() => {
+        const el = scrollAreaRef.current
+        if (!el) return
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (shouldScrollOnResizeRef.current) {
+                scrollToBottom()
+            }
+        })
+
+        resizeObserver.observe(el)
+
+        // Safari visualViewport handling for bottom toolbar
+        const handleVisualViewportChange = () => {
+            if (shouldScrollOnResizeRef.current) {
+                scrollToBottom()
+            }
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleVisualViewportChange)
+            window.visualViewport.addEventListener('scroll', handleVisualViewportChange)
+        }
+
+        return () => {
+            resizeObserver.disconnect()
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', handleVisualViewportChange)
+                window.visualViewport.removeEventListener('scroll', handleVisualViewportChange)
+            }
+        }
+    }, [scrollToBottom])
 
     // ── join / leave socket room ─────────────────────────────────────────
     useEffect(() => {
@@ -585,6 +655,7 @@ export default function ConversationDetail() {
             {/* Header */}
             <ConversationDetailHeader
                 receiver={receiver}
+                group={groupInfo}
                 onClearChat={handleClearChat}
                 onSelectMode={enterSelectMode}
                 isBlockedByMe={blockStatus.iBlockedThem}
@@ -609,7 +680,8 @@ export default function ConversationDetail() {
                             return <DateDivider key={`div-${idx}`} date={item} />
                         }
                         const msg = item as Message
-                        const isMine = msg.senderId === user?._id
+                        const senderId = typeof msg.senderId === 'string' ? msg.senderId : msg.senderId._id
+                        const isMine = senderId === user?._id
                         return (
                             <SingleMessage
                                 key={msg._id}
@@ -626,6 +698,8 @@ export default function ConversationDetail() {
                                 selected={selectedIds.has(msg._id)}
                                 onToggleSelect={handleToggleSelect}
                                 highlighted={highlightedMessageId === msg._id}
+                                isGroup={!!groupInfo}
+                                groupMembers={groupInfo?.members}
                             />
                         )
                     })

@@ -6,6 +6,53 @@ const {
   GEMINI_API_KEY,
 } = require("../secrets.js");
 
+const translateMessage = async (req, res) => {
+  try {
+    const { text } = req.body;
+    
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: '请提供要翻译的文本' });
+    }
+
+    const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GEMINI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GEMINI_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: "你是一个专业的翻译助手。请将用户发送的文本翻译成中文。如果文本已经是中文，请直接返回原文。只返回翻译结果，不要添加任何解释或额外内容。"
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Translation API error:", errorText);
+      return res.status(500).json({ error: '翻译服务暂时不可用' });
+    }
+
+    const data = await response.json();
+    const translatedText = data.choices?.[0]?.message?.content || text;
+    
+    res.json({ translatedText });
+  } catch (error) {
+    console.error("Translation error:", error.message);
+    res.status(500).json({ error: '翻译失败，请稍后重试' });
+  }
+};
+
 const allMessage = async (req, res) => {
   try {
     // Verify the requesting user is a member of this conversation
@@ -35,6 +82,7 @@ const allMessage = async (req, res) => {
       hiddenFrom: { $ne: req.user.id },
     })
       .populate('replyTo', 'text imageUrl senderId softDeleted')
+      .populate('senderId', 'name profilePic')
       .lean();
 
     // Sanitize soft-deleted messages before sending to client:
@@ -52,7 +100,7 @@ const allMessage = async (req, res) => {
     res.json(sanitized);
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -261,6 +309,29 @@ const sendMessageHandler = async (data) => {
     replyTo,
   } = data;
   const conversation = await Conversation.findById(conversationId);
+  
+  if (!receiverId) {
+    const message = await Message.create({
+      conversationId,
+      senderId,
+      text,
+      imageUrl,
+      seenBy: [],
+      ...(replyTo && { replyTo }),
+    });
+
+    conversation.latestmessage = text || "sent an image";
+    conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
+      if (unread.userId.toString() !== senderId) {
+        return { ...unread, count: unread.count + 1 };
+      }
+      return unread;
+    });
+    await conversation.save();
+    await message.populate('replyTo', 'text imageUrl senderId softDeleted');
+    return message;
+  }
+  
   if (!isReceiverInsideChatRoom) {
     const message = await Message.create({
       conversationId,
@@ -271,18 +342,17 @@ const sendMessageHandler = async (data) => {
       ...(replyTo && { replyTo }),
     });
 
-    // update conversation latest message and increment unread count of receiver by 1
     conversation.latestmessage = text || "sent an image";
-    conversation.unreadCounts.map((unread) => {
-      if (unread.userId.toString() == receiverId.toString()) {
-        unread.count += 1;
+    conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
+      if (unread.userId.toString() === receiverId.toString()) {
+        return { ...unread, count: unread.count + 1 };
       }
+      return unread;
     });
     await conversation.save();
     await message.populate('replyTo', 'text imageUrl senderId softDeleted');
     return message;
   } else {
-    // create new message with seenby receiver
     const message = await Message.create({
       conversationId,
       senderId,
@@ -425,4 +495,5 @@ module.exports = {
   deleteMessageHandler,
   toggleStar,
   getStarredMessages,
+  translateMessage,
 };

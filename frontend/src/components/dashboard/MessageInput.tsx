@@ -170,7 +170,9 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     <div className="flex items-center gap-3 px-4 pt-2.5 pb-1">
                         <div className="flex-1 min-w-0 pl-2 border-l-2 border-primary">
                             <p className="text-xs font-semibold text-primary truncate">
-                                回复 {replyToMessage.senderId === myId ? "自己" : (receiverName || "对方")}
+                                回复 {typeof replyToMessage.senderId === 'string' 
+                                    ? (replyToMessage.senderId === myId ? "自己" : (receiverName || "对方"))
+                                    : (replyToMessage.senderId._id === myId ? "自己" : (receiverName || "对方"))}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
                                 {replyToMessage.softDeleted

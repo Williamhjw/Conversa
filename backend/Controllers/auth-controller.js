@@ -108,7 +108,23 @@ const register = async (req, res) => {
       console.error("Cleanup after failed registration also failed:", cleanupError.message);
     }
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    
+    // Handle MongoDB validation errors with friendly messages
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => {
+        if (err.path === 'name') {
+          if (err.kind === 'minlength') return '姓名至少需要3个字符';
+          if (err.kind === 'maxlength') return '姓名不能超过50个字符';
+          return '姓名格式不正确';
+        }
+        if (err.path === 'email') return '邮箱格式不正确';
+        if (err.path === 'password') return '密码至少需要6个字符';
+        return err.message;
+      });
+      return res.status(400).json({ error: messages[0] });
+    }
+    
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -175,7 +191,7 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -186,7 +202,7 @@ const authUser = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -301,7 +317,7 @@ const sendotp = async (req, res) => {
     }
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -396,7 +412,7 @@ const sendVerificationOtp = async (req, res) => {
     }
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -427,7 +443,7 @@ const verifyEmail = async (req, res) => {
     res.json({ message: "Email verified successfully" });
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 

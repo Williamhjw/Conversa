@@ -13,6 +13,9 @@ import ConversationLayout from "./components/layout/ConversationLayout";
 import UserProfile from "./pages/UserProfile";
 import StarredMessages from "./pages/StarredMessages";
 import VerifyEmail from "./pages/VerifyEmail";
+import Games from "./pages/Games";
+import SnakeGame from "./pages/SnakeGame";
+import LeetCode from "./pages/LeetCode";
 
 export function App() {
 
@@ -38,6 +41,9 @@ export function App() {
           <Route path="/user" element={<User />} />
           <Route path="/user/profile" element={<UserProfile />} />
           <Route path="/user/starred" element={<StarredMessages />} />
+          <Route path="/user/games" element={<Games />} />
+          <Route path="/user/games/snake" element={<SnakeGame />} />
+          <Route path="/user/games/leetcode" element={<LeetCode />} />
           <Route element={<ConversationLayout />}>
             <Route path="/user/conversations" element={<Conversations />} />
             <Route path="/user/conversations/:id" element={<ConversationDetail />} />

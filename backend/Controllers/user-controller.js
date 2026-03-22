@@ -73,7 +73,7 @@ const getOnlineStatus = async (req, res) => {
     res.status(200).json({ isOnline: isBlocked ? false : user.isOnline });
   } catch (error) {
     console.log(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -133,22 +133,19 @@ const PINNED_EMAIL = "pmsoni2016@gmail.com";
 const getNonFriendsList = async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
-    const sort = req.query.sort || "name_asc";   // name_asc | name_desc | last_seen_recent | last_seen_oldest
+    const sort = req.query.sort || "name_asc";
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    // IDs already in a conversation with the requester (including the requester themselves)
-    const conversations = await Conversation.find({ members: { $in: [req.user.id] } });
-    const excludedIds = conversations.flatMap((c) => c.members);
+    const excludedIds = [req.user.id];
 
-    // Base filter: not in any conversation + not a bot
     const baseFilter = {
       _id: { $nin: excludedIds },
       email: { $not: /bot$/ },
+      isDeleted: { $ne: true },
     };
 
-    // Search filter
     if (search) {
       baseFilter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -156,7 +153,6 @@ const getNonFriendsList = async (req, res) => {
       ];
     }
 
-    // Sort map
     const sortMap = {
       name_asc: { name: 1 },
       name_desc: { name: -1 },
@@ -165,7 +161,6 @@ const getNonFriendsList = async (req, res) => {
     };
     const mongoSort = sortMap[sort] || sortMap.name_asc;
 
-    // When no search: handle pinned user separately so they always appear at top of page 1
     let pinnedUser = null;
     if (!search) {
       pinnedUser = await User.findOne({
@@ -174,12 +169,10 @@ const getNonFriendsList = async (req, res) => {
       }).select("-password");
     }
 
-    // Exclude pinned user from main paginated query
     const mainFilter = pinnedUser
       ? { ...baseFilter, _id: { $nin: [...excludedIds, pinnedUser._id] } }
       : baseFilter;
 
-    // Adjust skip/limit on page 1 to account for the pinned slot
     const effectiveLimit = (pinnedUser && page === 1) ? limit - 1 : limit;
     const effectiveSkip = (pinnedUser && page > 1) ? skip - 1 : skip;
 
@@ -188,7 +181,6 @@ const getNonFriendsList = async (req, res) => {
       User.countDocuments(mainFilter),
     ]);
 
-    // Total including the pinned user
     const grandTotal = total + (pinnedUser ? 1 : 0);
     const hasMore = skip + limit < grandTotal;
 
@@ -239,7 +231,7 @@ const updateprofile = async (req, res) => {
     await User.findByIdAndUpdate(req.user.id, allowedUpdates);
     res.status(200).json({ message: "Profile Updated" });
   } catch (error) {
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -257,7 +249,6 @@ const deleteAccount = async (req, res) => {
       about: "",
       email: anonymisedEmail,
       profilePic: "https://ui-avatars.com/api/?name=Deleted+User&background=808080&color=ffffff&bold=true",
-      // Wipe login credentials so the account cannot be accessed again
       password: "",
       otp: "",
       otpExpiry: null,
@@ -271,4 +262,49 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-module.exports = { getPresignedUrl, getOnlineStatus, getNonFriendsList, updateprofile, blockUser, unblockUser, getBlockStatus, deleteAccount };
+const checkDuplicateUsers = async (req, res) => {
+  try {
+    const allUsers = await User.find({}).select("name email isBot isDeleted createdAt");
+    
+    const nameCounts = {};
+    allUsers.forEach((u) => {
+      const key = u.name;
+      if (!nameCounts[key]) nameCounts[key] = [];
+      nameCounts[key].push(u);
+    });
+
+    const duplicates = [];
+    for (const [name, users] of Object.entries(nameCounts)) {
+      if (users.length > 1 && !users[0].isBot) {
+        duplicates.push({
+          name,
+          count: users.length,
+          users: users.map((u) => ({
+            id: u._id,
+            email: u.email,
+            isBot: u.isBot || false,
+            isDeleted: u.isDeleted || false,
+            createdAt: u.createdAt
+          }))
+        });
+      }
+    }
+
+    res.json({
+      total: allUsers.length,
+      duplicates,
+      allUsers: allUsers.map((u) => ({
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        isBot: u.isBot || false,
+        isDeleted: u.isDeleted || false
+      }))
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+module.exports = { getPresignedUrl, getOnlineStatus, getNonFriendsList, updateprofile, blockUser, unblockUser, getBlockStatus, deleteAccount, checkDuplicateUsers };

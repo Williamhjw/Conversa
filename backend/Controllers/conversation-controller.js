@@ -70,7 +70,7 @@ const createConversation = async (req, res) => {
     return res.status(200).json(sanitizedNew);
   } catch (error) {
     console.log(error);
-    return res.status(500).send("Internal Server Error");
+    return res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -101,7 +101,7 @@ const getConversation = async (req, res) => {
     );
     res.status(200).json(sanitized);
   } catch (error) {
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -122,15 +122,21 @@ const getConversationList = async (req, res) => {
       return res.status(404).json({ error: "No conversation found" });
     }
 
-    // Build response: annotate isPinned
     let result = [];
     for (let i = 0; i < conversationList.length; i++) {
       const convId = conversationList[i]._id.toString();
 
       const conv = conversationList[i].toObject();
-      conv.members = conversationList[i].members
-        .filter((member) => member.id !== userId)
-        .map((member) => sanitizeForRequester(member, userId));
+      
+      if (conv.isGroup) {
+        conv.members = conversationList[i].members.map((member) =>
+          sanitizeForRequester(member, userId)
+        );
+      } else {
+        conv.members = conversationList[i].members
+          .filter((member) => member.id !== userId)
+          .map((member) => sanitizeForRequester(member, userId));
+      }
       conv.isPinned = pinnedSet.has(convId);
       result.push(conv);
     }
@@ -145,7 +151,7 @@ const getConversationList = async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -172,7 +178,59 @@ const togglePin = async (req, res) => {
     }
   } catch (error) {
     console.log(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
+  }
+};
+
+const deleteConversation = async (req, res) => {
+  const userId = req.user.id;
+  const convId = req.params.id;
+
+  try {
+    const conversation = await Conversation.findById(convId);
+    if (!conversation) {
+      return res.status(404).json({ error: "对话不存在" });
+    }
+
+    const isMember = conversation.members.some((m) => m.toString() === userId);
+    if (!isMember) {
+      return res.status(403).json({ error: "无权删除此对话" });
+    }
+
+    await User.findByIdAndUpdate(userId, { $pull: { pinnedConversations: convId } });
+
+    if (conversation.isGroup) {
+      conversation.members = conversation.members.filter((m) => m.toString() !== userId);
+      conversation.unreadCounts = conversation.unreadCounts.filter(
+        (uc) => uc.userId.toString() !== userId
+      );
+      conversation.groupAdmins = conversation.groupAdmins.filter(
+        (admin) => admin.toString() !== userId
+      );
+
+      if (conversation.groupOwner && conversation.groupOwner.toString() === userId) {
+        if (conversation.members.length > 0) {
+          const newOwner = conversation.members[0];
+          conversation.groupOwner = newOwner;
+          if (!conversation.groupAdmins.some((a) => a.toString() === newOwner.toString())) {
+            conversation.groupAdmins.push(newOwner);
+          }
+        }
+      }
+
+      if (conversation.members.length === 0) {
+        await Conversation.findByIdAndDelete(convId);
+      } else {
+        await conversation.save();
+      }
+    } else {
+      await Conversation.findByIdAndDelete(convId);
+    }
+
+    res.status(200).json({ message: "对话已删除", deleted: true });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
@@ -181,4 +239,5 @@ module.exports = {
   getConversation,
   getConversationList,
   togglePin,
+  deleteConversation,
 };

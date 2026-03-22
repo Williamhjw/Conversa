@@ -129,13 +129,55 @@
 
   body {
     @apply bg-background text-foreground;
-    /* respect iOS safe-area (notch / home indicator) */
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   html {
     @apply font-sans;
   }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0 / 30%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0 0 / 50%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0 / 40%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 60%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0 0 / 30%) transparent;
+}
+
+.dark * {
+  scrollbar-color: oklch(0.4 0 0 / 40%) transparent;
 }
 
 /* ── thin scrollbar utility ─────────────────────────────────────────────── */

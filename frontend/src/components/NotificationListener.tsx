@@ -64,11 +64,12 @@ export default function NotificationListener() {
 
                 const updated = prev.map((c, i) => {
                     if (i !== idx) return c
+                    const backendUnreadCounts = data.conversation.unreadCounts
                     return {
                         ...c,
                         latestmessage: message.text ?? "发送了一张图片",
                         updatedAt: new Date().toISOString(),
-                        unreadCounts: c.unreadCounts.map((u) =>
+                        unreadCounts: backendUnreadCounts || c.unreadCounts.map((u) =>
                             u.userId !== sender._id
                                 ? { ...u, count: u.count + 1 }
                                 : u

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Search, MessageCircle, Bot, SquarePen, ChevronDown, Trash2, ShieldX, Pin, PinOff } from "lucide-react"
+import { Search, MessageCircle, Bot, SquarePen, ChevronDown, Trash2, ShieldX, Pin, PinOff, Users, UserX, Sparkles } from "lucide-react"
 import { useConversations, type Conversation } from "@/hooks/use-conversations"
 import { useAuth } from "@/hooks/use-auth"
 import { useChat } from "@/hooks/use-chat"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { GroupAvatar } from "@/components/ui/group-avatar"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,13 +16,20 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { userApi, messageApi, conversationApi } from "@/lib/api"
+import { userApi, messageApi, conversationApi, groupApi } from "@/lib/api"
 import { toast } from "sonner"
 import socket from "@/lib/socket"
 import type { User } from "@/hooks/use-auth"
 import { Button } from "../ui/button"
 import NewChatDialog from "./NewChatDialog"
+import CreateGroupDialog from "./CreateGroupDialog"
 
 /* ─── helpers ──────────────────────────────────────────────────────────── */
 
@@ -74,28 +83,36 @@ interface RowProps {
     onToggleBlock: (userId: string, userName: string, isBlocked: boolean) => Promise<void>
     onClearChat: (convId: string) => Promise<void>
     onTogglePin: (convId: string) => Promise<void>
+    onDeleteConversation: (convId: string, convName: string) => Promise<void>
+    onSummarizeUnread: (convId: string, convName: string) => void
     blockedUsers: Set<string>
 }
 
-function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, blockedUsers }: RowProps) {
+function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdownId, setOpenDropdownId, onToggleBlock, onClearChat, onTogglePin, onDeleteConversation, onSummarizeUnread, blockedUsers }: RowProps) {
     const other = getOtherMember(conv, myId)
     const unread = conv.unreadCounts.find((u) => u.userId === myId)?.count ?? 0
-    const name = other?.name ?? "未知"
+    
+    const isGroup = conv.isGroup
+    const name = isGroup ? (conv.groupName || "未命名群组") : (other?.name ?? "未知")
+    const avatar = isGroup ? conv.groupAvatar : other?.profilePic
+    const isBot = isGroup ? false : other?.isBot
+    const isOnline = isGroup ? true : other?.isOnline
+    
     const preview = isTyping
         ? "正在输入…"
         : conv.latestmessage || "开始对话"
     const dropdownOpen = openDropdownId === conv._id
-    const isBlocked = other ? blockedUsers.has(other._id) : false
+    const isBlocked = isGroup ? false : (other ? blockedUsers.has(other._id) : false)
     const isPinned = conv.isPinned
 
     return (
         <div className="relative group">
-            {/* Hover dropdown — absolutely positioned, takes no layout space */}
-            {!other?.isBot && (
+            {/* Dropdown button — always visible on mobile, hover on desktop */}
+            {(!isBot) && (
                 <div
                     className={cn(
-                        "absolute right-2 top-3.5 z-10 pointer-events-none transition-opacity",
-                        dropdownOpen ? "opacity-100 pointer-events-auto" : "opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto"
+                        "absolute right-2 top-3.5 z-10 transition-opacity",
+                        "opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto"
                     )}
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -104,10 +121,11 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                         onOpenChange={(open) => setOpenDropdownId(open ? conv._id : null)}
                     >
                         <DropdownMenuTrigger asChild>
-                            <button className="flex items-center justify-center size-5 rounded-md 
-                            bg-gray-200/60 hover:bg-gray-200/90
-                            dark:bg-sidebar-accent dark:text-muted-foreground dark:hover:text-foreground">
-                                <ChevronDown className="size-3" />
+                            <button className="flex items-center justify-center size-6 rounded-md 
+                            bg-gray-200/80 hover:bg-gray-200
+                            dark:bg-sidebar-accent dark:text-muted-foreground dark:hover:text-foreground
+                            active:scale-95 transition-transform">
+                                <ChevronDown className="size-3.5" />
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
@@ -116,20 +134,44 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                                 {isPinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
                                 {isPinned ? "取消置顶" : "置顶"}
                             </DropdownMenuItem>
+                            {isGroup && unread > 0 && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={(e) => { e.stopPropagation(); onSummarizeUnread(conv._id, name) }}
+                                    >
+                                        <Sparkles className="size-4" />
+                                        AI 总结未读
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                            {!isGroup && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
+                                        variant="destructive"
+                                    >
+                                        <ShieldX className="size-4" />
+                                        {isBlocked ? "解除屏蔽" : "屏蔽用户"}
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={(e) => { e.stopPropagation(); onToggleBlock(other!._id, other!.name, isBlocked) }}
-                                variant="destructive"
-                            >
-                                <ShieldX className="size-4" />
-                                {isBlocked ? "解除屏蔽" : "屏蔽用户"}
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onClearChat(conv._id) }}
                                 variant="destructive"
                             >
                                 <Trash2 className="size-4" />
                                 清空聊天
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onDeleteConversation(conv._id, name) }}
+                                variant="destructive"
+                            >
+                                <UserX className="size-4" />
+                                {isGroup ? "退出群组" : "删除好友"}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -149,14 +191,18 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
             >
                 {/* avatar */}
                 <div className="relative shrink-0">
-                    <Avatar className="size-10">
-                        <AvatarImage src={other?.profilePic} alt={name} />
-                        <AvatarFallback className="bg-primary/15  text-xs font-semibold">
-                            {other?.isBot ? <Bot className="size-4" /> : initials(name)}
-                        </AvatarFallback>
-                    </Avatar>
+                    {isGroup ? (
+                        <GroupAvatar members={conv.members} size={40} />
+                    ) : (
+                        <Avatar className="size-10">
+                            <AvatarImage src={avatar} alt={name} />
+                            <AvatarFallback className="bg-primary/15 text-xs font-semibold">
+                                {isBot ? <Bot className="size-4" /> : initials(name || "U")}
+                            </AvatarFallback>
+                        </Avatar>
+                    )}
                     {/* online dot */}
-                    {(other?.isBot || other?.isOnline) && (
+                    {!isGroup && isOnline && (
                         <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-green-500 ring-2 ring-sidebar" />
                     )}
                 </div>
@@ -167,7 +213,7 @@ function ConversationRow({ conv, myId, isActive, isTyping, onClick, openDropdown
                         <span className="truncate text-sm font-medium leading-tight">{name}</span>
                         <div className="flex items-center gap-1">
                             {isPinned && <Pin className="size-2.5 text-primary shrink-0" />}
-                            <span className={`shrink-0 text-[10px] text-muted-foreground group-hover:mr-5 ${dropdownOpen ? "mr-5" : "mr-0"}`}>
+                            <span className={`shrink-0 text-[10px] text-muted-foreground mr-6 md:mr-0 md:group-hover:mr-5 ${dropdownOpen ? "md:mr-5" : ""}`}>
                                 {relativeTime(conv.updatedAt)}
                             </span>
                         </div>
@@ -209,10 +255,15 @@ export default function ConversationsList() {
     const [query, setQuery] = useState("")
     const [filter, setFilter] = useState<"all" | "unread" | "online">("all")
     const [newChatOpen, setNewChatOpen] = useState(false)
+    const [createGroupOpen, setCreateGroupOpen] = useState(false)
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
     const [blockedUsers, setBlockedUsers] = useState<Set<string>>(
         () => new Set((user?.blockedUsers ?? []).map(String))
     )
+
+    const [summaryDialogOpen, setSummaryDialogOpen] = useState(false)
+    const [summaryLoading, setSummaryLoading] = useState(false)
+    const [summaryData, setSummaryData] = useState<{ summary: string; unreadCount: number; groupName: string } | null>(null)
 
     // toggle block/unblock a user from the conversations list
     const handleToggleBlock = async (userId: string, userName: string, isBlocked: boolean) => {
@@ -256,6 +307,53 @@ export default function ConversationsList() {
             toast.success(isPinned ? "对话已置顶" : "对话已取消置顶")
         } catch {
             toast.error("置顶操作失败")
+        }
+    }
+
+    const handleDeleteConversation = async (convId: string, convName: string) => {
+        const conv = conversationsList.find((c) => c._id === convId)
+        const isGroup = conv?.isGroup
+        const actionText = isGroup ? "退出群组" : "删除好友"
+        const confirmText = isGroup 
+            ? `确定要退出群组「${convName}」吗？` 
+            : `确定要删除与 ${convName} 的好友关系吗？\n\n这将删除你们之间的所有聊天记录。`
+        
+        if (!confirm(confirmText)) {
+            return
+        }
+        try {
+            await conversationApi.delete(convId)
+            setConversationsList((prev) => prev.filter((c) => c._id !== convId))
+            setOpenDropdownId(null)
+            if (activeId === convId) {
+                navigate("/user")
+            }
+            toast.success(isGroup ? `已退出群组「${convName}」` : `已删除与 ${convName} 的好友关系`)
+        } catch (err) {
+            console.error("删除对话错误:", err)
+            const errorMsg = err instanceof Error ? err.message : `${actionText}失败`
+            toast.error(errorMsg)
+        }
+    }
+
+    const handleSummarizeUnread = async (convId: string, convName: string) => {
+        setOpenDropdownId(null)
+        setSummaryLoading(true)
+        setSummaryData({ summary: "", unreadCount: 0, groupName: convName })
+        setSummaryDialogOpen(true)
+
+        try {
+            const result = await groupApi.summarizeUnread(convId)
+            setSummaryData({
+                summary: result.summary,
+                unreadCount: result.unreadCount,
+                groupName: convName
+            })
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "生成总结失败")
+            setSummaryDialogOpen(false)
+        } finally {
+            setSummaryLoading(false)
         }
     }
 
@@ -310,12 +408,18 @@ export default function ConversationsList() {
             {/* header */}
             <div className="flex items-center justify-between px-4 py-0 lg:py-4">
                 <h1 className="text-lg font-bold">聊天</h1>
-                <Button variant={"outline"} size={"icon"} onClick={() => setNewChatOpen(true)}>
-                    <SquarePen className="size-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button variant={"outline"} size={"icon"} onClick={() => setCreateGroupOpen(true)} title="创建群组">
+                        <Users className="size-4" />
+                    </Button>
+                    <Button variant={"outline"} size={"icon"} onClick={() => setNewChatOpen(true)} title="新建私聊">
+                        <SquarePen className="size-4" />
+                    </Button>
+                </div>
             </div>
 
             <NewChatDialog open={newChatOpen} onOpenChange={setNewChatOpen} />
+            <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
 
             <div className="px-3 pt-2 pb-2 border-b">
                 <div className="relative">
@@ -377,12 +481,44 @@ export default function ConversationsList() {
                                 onToggleBlock={handleToggleBlock}
                                 onClearChat={handleClearChatRow}
                                 onTogglePin={handleTogglePin}
+                                onDeleteConversation={handleDeleteConversation}
+                                onSummarizeUnread={handleSummarizeUnread}
                                 blockedUsers={blockedUsers}
                             />
                         ))
                     )}
                 </div>
             </div>
+
+            <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Sparkles className="size-5 text-primary" />
+                            AI 未读消息总结
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {summaryLoading ? (
+                            <div className="flex flex-col items-center justify-center py-8 gap-3">
+                                <Spinner className="size-6 text-primary" />
+                                <p className="text-sm text-muted-foreground">正在生成总结…</p>
+                            </div>
+                        ) : summaryData && (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">{summaryData.groupName}</span>
+                                    <span>·</span>
+                                    <span>{summaryData.unreadCount} 条未读消息</span>
+                                </div>
+                                <div className="p-4 rounded-lg bg-muted/50 border">
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{summaryData.summary}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

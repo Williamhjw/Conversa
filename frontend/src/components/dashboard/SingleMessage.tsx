@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star, Reply } from "lucide-react"
+import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star, Reply, Languages } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -12,10 +12,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import type { Message } from "@/hooks/use-chat"
+import type { Message, SenderInfo } from "@/hooks/use-chat"
 import { Button } from "../ui/button"
 import { useNavigate } from "react-router-dom"
+import { messageApi } from "@/lib/api"
+import { toast } from "sonner"
+import { Spinner } from "../ui/spinner"
 
 interface Props {
     message: Message
@@ -33,6 +37,9 @@ interface Props {
     onToggleSelect?: (id: string) => void
     // highlight / jump-to
     highlighted?: boolean
+    // group chat props
+    isGroup?: boolean
+    groupMembers?: Array<{ _id: string; name: string; profilePic?: string }>
 }
 
 function formatTime(dateStr: string): string {
@@ -49,13 +56,35 @@ function formatTime(dateStr: string): string {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
-export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted }: Props) {
+export default function SingleMessage({ message, isMine, isBot, receiverId, myId, receiverName, onDelete, onStar, onReply, selectMode, selected, onToggleSelect, highlighted, isGroup, groupMembers }: Props) {
     const [hovered, setHovered] = useState(false)
     const [copied, setCopied] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
+    const [translating, setTranslating] = useState(false)
+    const [translatedText, setTranslatedText] = useState<string | null>(null)
+    const [showTranslation, setShowTranslation] = useState(false)
     const navigate = useNavigate()
+    const isTouchDevice = useRef(false)
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const longPressTriggered = useRef(false)
 
     const isStarred = message.starredBy?.includes(myId)
+
+    // Get sender info for group chat
+    const getSenderInfo = () => {
+        if (typeof message.senderId === 'string') {
+            // If senderId is just a string, look up in groupMembers
+            if (isGroup && groupMembers) {
+                const member = groupMembers.find(m => m._id === message.senderId)
+                if (member) return member
+            }
+            return { name: '未知用户', profilePic: undefined }
+        }
+        // If senderId is populated with SenderInfo
+        return message.senderId as SenderInfo
+    }
+
+    const senderInfo = getSenderInfo()
 
     const handleCopy = () => {
         if (message.text) {
@@ -65,8 +94,83 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
         }
     }
 
-    const handleRowClick = () => {
-        if (selectMode) onToggleSelect?.(message._id)
+    const handleTranslate = async () => {
+        if (!message.text || translating) return
+        
+        if (translatedText) {
+            setShowTranslation(!showTranslation)
+            return
+        }
+
+        setTranslating(true)
+        try {
+            const result = await messageApi.translate(message.text)
+            setTranslatedText(result.translatedText)
+            setShowTranslation(true)
+        } catch {
+            toast.error("翻译失败，请稍后重试")
+        } finally {
+            setTranslating(false)
+        }
+    }
+
+    const handleTouchStart = () => {
+        isTouchDevice.current = true
+        if (selectMode) return
+        longPressTriggered.current = false
+        longPressTimer.current = setTimeout(() => {
+            longPressTriggered.current = true
+            setHovered(true)
+        }, 500)
+    }
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current)
+            longPressTimer.current = null
+        }
+        if (selectMode) {
+            e.preventDefault()
+            onToggleSelect?.(message._id)
+        } else if (longPressTriggered.current) {
+            longPressTriggered.current = false
+        } else if (hovered) {
+            e.preventDefault()
+            setHovered(false)
+        }
+    }
+
+    const handleTouchMove = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current)
+            longPressTimer.current = null
+        }
+    }
+
+    const handleToolbarTouchEnd = (e: React.TouchEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setHovered(false)
+    }
+
+    const handleMouseEnter = () => {
+        if (isTouchDevice.current) return
+        if (!selectMode) setHovered(true)
+    }
+
+    const handleMouseLeave = () => {
+        if (isTouchDevice.current) return
+        if (!selectMode) setHovered(false)
+    }
+
+    // Get initials for avatar fallback
+    const getInitials = (name: string) => {
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2)
     }
 
     return (
@@ -74,14 +178,16 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
             <div
                 data-message-id={message._id}
                 className={cn(
-                    "group flex items-end gap-2",
-                    isMine ? "ml-auto flex-row-reverse max-w-[75%]" : isBot ? "mr-auto max-w-[85%]" : "mr-auto max-w-[75%]",
+                    "group flex gap-2",
+                    isMine ? "ml-auto flex-row-reverse" : isBot ? "mr-auto" : "mr-auto",
                     selectMode && "cursor-pointer",
                     selectMode && selected && (isMine ? "pr-2" : "pl-2")
                 )}
-                onMouseEnter={() => { if (!selectMode) setHovered(true) }}
-                onMouseLeave={() => { if (!selectMode) setHovered(false) }}
-                onClick={handleRowClick}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onTouchMove={handleTouchMove}
             >
                 {/* Checkbox indicator in select mode */}
                 {selectMode && (
@@ -91,13 +197,34 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                             : <Circle className="size-5 text-muted-foreground" />}
                     </div>
                 )}
-                {/* Bubble */}
+                {/* Avatar for group chat - show for other users' messages */}
+                {!isMine && !isBot && isGroup && (
+                    <div className="shrink-0 self-start">
+                        <Avatar className="size-8">
+                            <AvatarImage src={senderInfo.profilePic} alt={senderInfo.name} />
+                            <AvatarFallback className="bg-primary/15 text-xs font-semibold">
+                                {getInitials(senderInfo.name)}
+                            </AvatarFallback>
+                        </Avatar>
+                    </div>
+                )}
+                <div className={cn(
+                    "flex flex-col gap-0.5",
+                    isMine ? "max-w-[75%]" : isBot ? "max-w-[85%]" : isGroup ? "max-w-[calc(100%-48px)]" : "max-w-[75%]"
+                )}>
+                    {/* Sender name for group chat */}
+                    {!isMine && !isBot && isGroup && (
+                        <span className="text-xs text-muted-foreground ml-1">{senderInfo.name}</span>
+                    )}
+                    {/* Bubble */}
                 <div
                     className={cn(
                         "relative px-3.5 py-2 text-sm shadow-sm transition-shadow",
                         isMine
                             ? "bg-primary text-white rounded-2xl rounded-br-sm"
-                            : "bg-muted text-foreground rounded-2xl rounded-bl-sm",
+                            : "bg-muted text-foreground rounded-2xl",
+                        !isMine && isGroup && "rounded-tl-sm",
+                        !isMine && !isGroup && "rounded-bl-sm",
                         highlighted && "animate-highlight"
                     )}
                 >
@@ -113,7 +240,9 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
 
                             )}>
                             <p className={cn("font-semibold truncate", isMine ? "text-white/80" : "text-primary")}>
-                                {message.replyTo.senderId === myId ? "你" : receiverName}
+                                {typeof message.replyTo.senderId === 'string' 
+                                    ? (message.replyTo.senderId === myId ? "你" : receiverName)
+                                    : (message.replyTo.senderId._id === myId ? "你" : receiverName)}
                             </p>
                             <p className={cn("truncate", isMine ? "text-white/60" : "text-muted-foreground")}>
                                 {message.replyTo.softDeleted
@@ -159,6 +288,15 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                     <p className="leading-relaxed whitespace-pre-wrap break-all">{message.text}</p>
                                 )
                             )}
+                            {showTranslation && translatedText && (
+                                <div className={cn(
+                                    "mt-2 pt-2 border-t text-xs",
+                                    isMine ? "border-white/20 text-white/80" : "border-border text-muted-foreground"
+                                )}>
+                                    <p className="font-medium mb-0.5">中文翻译：</p>
+                                    <p className="whitespace-pre-wrap break-all">{translatedText}</p>
+                                </div>
+                            )}
                         </>
                     )}
                     <span
@@ -176,21 +314,29 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                         })()}
                     </span>
                 </div>
+                </div>
 
                 {/* Hover action buttons — hidden in select mode or for tombstones (no copy; only hide if mine) */}
                 {!selectMode && (
                     <div
                         className={cn(
                             "flex items-center gap-1 transition-opacity duration-150",
-                            hovered ? "opacity-100" : "opacity-0 pointer-events-none"
+                            "md:hover:opacity-100 md:hover:pointer-events-auto",
+                            hovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
                         )}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setHovered(false)
+                        }}
+                        onTouchEnd={handleToolbarTouchEnd}
                     >
                         {/* Reply button — always available except for tombstones */}
                         {!message.softDeleted && !selectMode && (
                             <Button
                                 size={"icon"}
                                 variant={"secondary"}
-                                onClick={() => onReply(message)}
+                                onClick={(e) => { e.stopPropagation(); onReply(message) }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onReply(message) }}
                                 title="回复"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
@@ -201,7 +347,8 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                             <Button
                                 size={"icon"}
                                 variant={"secondary"}
-                                onClick={() => onStar(message._id)}
+                                onClick={(e) => { e.stopPropagation(); onStar(message._id) }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onStar(message._id) }}
                                 title={isStarred ? "取消收藏" : "收藏"}
                                 className={cn(
                                     "flex items-center justify-center size-7 rounded-full",
@@ -215,7 +362,8 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                             <Button
                                 size={"icon"}
                                 variant={"secondary"}
-                                onClick={handleCopy}
+                                onClick={(e) => { e.stopPropagation(); handleCopy() }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleCopy() }}
                                 title="复制"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
@@ -225,11 +373,31 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 }
                             </Button>
                         )}
+                        {message.text && !message.softDeleted && (
+                            <Button
+                                size={"icon"}
+                                variant={"secondary"}
+                                onClick={(e) => { e.stopPropagation(); handleTranslate() }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleTranslate() }}
+                                title={showTranslation ? "隐藏翻译" : "翻译成中文"}
+                                className={cn(
+                                    "flex items-center justify-center size-7 rounded-full",
+                                    showTranslation && "text-primary"
+                                )}
+                                disabled={translating}
+                            >
+                                {translating
+                                    ? <Spinner className="size-3.5" />
+                                    : <Languages className="size-3.5" />
+                                }
+                            </Button>
+                        )}
                         {(!message.softDeleted || isMine) && (
                             <Button
                                 size={"icon"}
                                 variant={"destructive"}
-                                onClick={() => setDeleteOpen(true)}
+                                onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setDeleteOpen(true) }}
                                 title="删除"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
