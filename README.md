@@ -481,11 +481,7 @@ IMAGE_GEN_MODEL=cogview-3          # 图片生成模型
 # ── 高德地图 API ────────────────────────────────────────────────────────────
 AMAP_API_KEY=your-amap-api-key     # 用于天气查询
 
-# ── 七牛云存储 ──────────────────────────────────────────────────────────────
-QINIU_ACCESS_KEY=your-qiniu-ak
-QINIU_SECRET_KEY=your-qiniu-sk
-QINIU_BUCKET=your-bucket
-QINIU_DOMAIN=your-domain.com
+
 
 # ── 前端 ────────────────────────────────────────────────────────────────────
 VITE_API_URL=http://localhost:5000
