@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react"
-import { ArrowRight, ImagePlus, ShieldX, X } from "lucide-react"
+import { ArrowRight, ImagePlus, ShieldX, X, Sparkles, Loader2, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { emitSendMessage, emitTyping, emitStopTyping } from "@/lib/socket"
-import { userApi } from "@/lib/api"
+import { API_BASE } from "@/lib/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { Message } from "@/hooks/use-chat"
@@ -37,6 +37,10 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [caption, setCaption] = useState("")
+    
+    // Image generation mode state
+    const [isImageGenMode, setIsImageGenMode] = useState(false)
+    const [imageGenLoading, setImageGenLoading] = useState(false)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
     const stopTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -83,7 +87,11 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
-            handleSendText()
+            if (isImageGenMode) {
+                handleGenerateImage()
+            } else {
+                handleSendText()
+            }
         }
     }
 
@@ -96,6 +104,85 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
         setText("")
         onCancelReply?.()
         textareaRef.current?.focus()
+    }
+
+    // Toggle image generation mode
+    const toggleImageGenMode = () => {
+        setIsImageGenMode(!isImageGenMode)
+        setText("")
+        textareaRef.current?.focus()
+    }
+
+    // Generate image and send as bot message
+    const handleGenerateImage = async () => {
+        const prompt = text.trim()
+        if (!prompt) {
+            toast.error("请输入图片描述")
+            return
+        }
+
+        // Send user prompt message first
+        clearTimeout(stopTypingTimer.current!)
+        emitStopTypingNow()
+        emitSendMessage({ 
+            conversationId, 
+            text: `🎨 生成图片：${prompt}`, 
+            replyTo: replyToMessage?._id ?? null 
+        })
+        setText("")
+        onCancelReply?.()
+
+        // Start generating
+        setImageGenLoading(true)
+        
+        try {
+            const token = localStorage.getItem("auth-token")
+            const response = await fetch(`${API_BASE}/image/generate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "auth-token": token || "",
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    size: "1024x1024",
+                    n: 1,
+                }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.error || "图片生成失败")
+            }
+
+            const data = await response.json()
+            if (data.success && data.images && data.images.length > 0) {
+                const imageUrl = data.images[0].url
+                // Send the generated image as a bot message through socket
+                emitSendMessage({ 
+                    conversationId, 
+                    imageUrl: imageUrl, 
+                    text: `✨ 已为您生成图片\n📝 描述：${prompt}`,
+                    replyTo: null
+                })
+                // Auto exit image generation mode after successful generation
+                setIsImageGenMode(false)
+            } else {
+                throw new Error("图片生成返回数据异常")
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "图片生成失败")
+            // Send error message as bot
+            emitSendMessage({ 
+                conversationId, 
+                text: "❌ 图片生成失败，请稍后重试",
+                replyTo: null
+            })
+            // Auto exit image generation mode even on error
+            setIsImageGenMode(false)
+        } finally {
+            setImageGenLoading(false)
+        }
     }
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,20 +206,25 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
         if (!selectedFile) return
         setUploading(true)
         try {
-            const { token, key, domain } = await userApi.getPresignedUrl(
-                selectedFile.name,
-                selectedFile.type
-            ) as { token: string; key: string; domain: string }
-
             const formData = new FormData()
-            formData.append("token", token)
-            formData.append("key", key)
-            formData.append("file", selectedFile)
+            formData.append("image", selectedFile)
 
-            const uploadRes = await fetch("https://upload.qiniup.com", { method: "POST", body: formData })
-            if (!uploadRes.ok) throw new Error("Upload failed")
+            const token = localStorage.getItem("auth-token")
+            const uploadRes = await fetch(`${API_BASE}/upload`, {
+                method: "POST",
+                headers: {
+                    "auth-token": token || "",
+                },
+                body: formData,
+            })
 
-            const imageUrl = `${domain}/${key}`
+            if (!uploadRes.ok) {
+                const errorData = await uploadRes.json().catch(() => ({}))
+                throw new Error(errorData.error || "上传失败")
+            }
+
+            const { url } = await uploadRes.json()
+            const imageUrl = `${API_BASE}${url}`
             const trimmedCaption = caption.trim()
             emitSendMessage({ conversationId, imageUrl, ...(trimmedCaption && { text: trimmedCaption }), replyTo: replyToMessage?._id ?? null })
             onCancelReply?.()
@@ -190,8 +282,21 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                     </div>
                 )}
 
+                {/* Mode indicator */}
+                {isReceiverBot && isImageGenMode && (
+                    <div className="flex items-center gap-2 px-4 pt-2 pb-1">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
+                            <Sparkles className="size-3.5" />
+                            图片生成模式
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                            输入描述，AI将为您生成图片
+                        </span>
+                    </div>
+                )}
+
                 <div className="flex items-end gap-2 p-3">
-                {/* Image upload button */}
+                {/* Image upload button - only for normal users */}
                 {!isReceiverBot && (<><Button
                     type="button"
                     variant="ghost"
@@ -210,29 +315,58 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                         onChange={handleFileSelect}
                     /></>)}
 
+                {/* AI Image generation toggle button - only for bot */}
+                {isReceiverBot && (
+                    <Button
+                        type="button"
+                        variant={isImageGenMode ? "default" : "ghost"}
+                        size="lg"
+                        className={cn(
+                            "shrink-0 transition-all duration-200",
+                            isImageGenMode 
+                                ? "bg-purple-500 hover:bg-purple-600 text-white" 
+                                : "text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                        )}
+                        onClick={toggleImageGenMode}
+                        title={isImageGenMode ? "退出图片生成模式" : "进入图片生成模式"}
+                        disabled={imageGenLoading}
+                    >
+                        {isImageGenMode ? <MessageSquare className="size-5" /> : <Sparkles className="size-5" />}
+                    </Button>
+                )}
+
                 {/* Text area */}
                 <Textarea
                     ref={textareaRef}
-                    placeholder="输入消息…"
+                    placeholder={isImageGenMode ? "描述你想要生成的图片..." : "输入消息…"}
                     className={cn(
-                        "flex-1 min-h-10 max-h-36 resize-none text-base rounded-xl thin-scrollbar",
+                        "flex-1 min-h-10 max-h-36 resize-none text-base rounded-xl thin-scrollbar transition-all duration-200",
+                        isImageGenMode && "border-purple-300 dark:border-purple-700 focus-visible:ring-purple-500"
                     )}
                     rows={1}
                     value={text}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
+                    disabled={imageGenLoading}
                 />
 
                 {/* Send button */}
                 <Button
                     type="button"
                     size="lg"
-                    className="shrink-0 hover:bg-primary/90 text-white rounded-xl"
-                    onClick={handleSendText}
-                    disabled={!text.trim()}
-                    title="发送"
+                    className={cn(
+                        "shrink-0 hover:bg-primary/90 text-white rounded-xl transition-all duration-200",
+                        isImageGenMode && "bg-purple-500 hover:bg-purple-600"
+                    )}
+                    onClick={isImageGenMode ? handleGenerateImage : handleSendText}
+                    disabled={!text.trim() || imageGenLoading}
+                    title={isImageGenMode ? "生成图片" : "发送"}
                 >
-                    <ArrowRight className="size-5" />
+                    {imageGenLoading ? (
+                        <Loader2 className="size-5 animate-spin" />
+                    ) : (
+                        <ArrowRight className="size-5" />
+                    )}
                 </Button>
                 </div>
             </div>

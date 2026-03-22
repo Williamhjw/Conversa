@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Copy, Trash2, Check, CheckCheck, CheckCircle2, Circle, Star, Reply, Languages } from "lucide-react"
@@ -66,7 +66,18 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
     const navigate = useNavigate()
     const isTouchDevice = useRef(false)
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const longPressTriggered = useRef(false)
+
+    useEffect(() => {
+        isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    }, [])
+
+    useEffect(() => {
+        return () => {
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current)
+            }
+        }
+    }, [])
 
     const isStarred = message.starredBy?.includes(myId)
 
@@ -88,7 +99,24 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
 
     const handleCopy = () => {
         if (message.text) {
-            navigator.clipboard.writeText(message.text)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(message.text)
+            } else {
+                const textarea = document.createElement('textarea')
+                textarea.value = message.text
+                textarea.style.position = 'fixed'
+                textarea.style.left = '-9999px'
+                textarea.style.top = '-9999px'
+                document.body.appendChild(textarea)
+                textarea.focus()
+                textarea.select()
+                try {
+                    document.execCommand('copy')
+                } catch {
+                    // ignore
+                }
+                document.body.removeChild(textarea)
+            }
             setCopied(true)
             setTimeout(() => setCopied(false), 1500)
         }
@@ -114,12 +142,12 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
         }
     }
 
-    const handleTouchStart = () => {
-        isTouchDevice.current = true
+    const handleTouchStart = (e: React.TouchEvent) => {
         if (selectMode) return
-        longPressTriggered.current = false
+        if (hovered) return
+        // Prevent Safari's default text selection menu
+        e.preventDefault()
         longPressTimer.current = setTimeout(() => {
-            longPressTriggered.current = true
             setHovered(true)
         }, 500)
     }
@@ -132,11 +160,6 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
         if (selectMode) {
             e.preventDefault()
             onToggleSelect?.(message._id)
-        } else if (longPressTriggered.current) {
-            longPressTriggered.current = false
-        } else if (hovered) {
-            e.preventDefault()
-            setHovered(false)
         }
     }
 
@@ -145,12 +168,6 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
             clearTimeout(longPressTimer.current)
             longPressTimer.current = null
         }
-    }
-
-    const handleToolbarTouchEnd = (e: React.TouchEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setHovered(false)
     }
 
     const handleMouseEnter = () => {
@@ -178,7 +195,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
             <div
                 data-message-id={message._id}
                 className={cn(
-                    "group flex gap-2",
+                    "group flex gap-2 max-w-full",
                     isMine ? "ml-auto flex-row-reverse" : isBot ? "mr-auto" : "mr-auto",
                     selectMode && "cursor-pointer",
                     selectMode && selected && (isMine ? "pr-2" : "pl-2")
@@ -188,6 +205,12 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchMove}
+                onClick={(e) => {
+                    const target = e.target as HTMLElement
+                    if (isTouchDevice.current && hovered && !target.closest('button')) {
+                        setHovered(false)
+                    }
+                }}
             >
                 {/* Checkbox indicator in select mode */}
                 {selectMode && (
@@ -209,7 +232,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                     </div>
                 )}
                 <div className={cn(
-                    "flex flex-col gap-0.5",
+                    "flex flex-col gap-0.5 max-w-full",
                     isMine ? "max-w-[75%]" : isBot ? "max-w-[85%]" : isGroup ? "max-w-[calc(100%-48px)]" : "max-w-[75%]"
                 )}>
                     {/* Sender name for group chat */}
@@ -219,7 +242,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                     {/* Bubble */}
                 <div
                     className={cn(
-                        "relative px-3.5 py-2 text-sm shadow-sm transition-shadow",
+                        "relative px-3.5 py-2 text-sm shadow-sm transition-shadow overflow-hidden select-none",
                         isMine
                             ? "bg-primary text-white rounded-2xl rounded-br-sm"
                             : "bg-muted text-foreground rounded-2xl",
@@ -227,6 +250,10 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                         !isMine && !isGroup && "rounded-bl-sm",
                         highlighted && "animate-highlight"
                     )}
+                    style={{
+                        WebkitUserSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                    }}
                 >
                     {/* Reply preview — shown when this message is a reply to another */}
                     {message.replyTo && !message.softDeleted && (
@@ -262,7 +289,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 <img
                                     src={message.imageUrl}
                                     alt="图片"
-                                    className="max-w-60 max-h-80 rounded-lg mb-1 object-cover"
+                                    className="max-w-full w-auto h-auto max-h-80 rounded-lg mb-1 object-cover"
                                 />
                             )}
                             {message.text && (
@@ -301,7 +328,8 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                     )}
                     <span
                         className={cn(
-                            "flex items-center justify-end gap-1 text-[10px] mt-0.5 leading-none",
+                            "flex items-center gap-1 text-[10px] mt-0.5 leading-none",
+                            isMine ? "justify-end" : "justify-start",
                             isMine ? "text-white/60" : "text-muted-foreground"
                         )}
                     >
@@ -325,10 +353,20 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                             hovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
                         )}
                         onClick={(e) => {
+                            if (!e.currentTarget.contains(e.target as Node)) {
+                                e.stopPropagation()
+                                setHovered(false)
+                            }
+                        }}
+                        onTouchEnd={(e) => {
+                            const target = e.target as HTMLElement
+                            if (target.closest('button')) {
+                                return
+                            }
+                            e.preventDefault()
                             e.stopPropagation()
                             setHovered(false)
                         }}
-                        onTouchEnd={handleToolbarTouchEnd}
                     >
                         {/* Reply button — always available except for tombstones */}
                         {!message.softDeleted && !selectMode && (
@@ -336,7 +374,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={(e) => { e.stopPropagation(); onReply(message) }}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onReply(message) }}
+                                onTouchEnd={(e) => { e.stopPropagation(); }}
                                 title="回复"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
@@ -348,7 +386,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={(e) => { e.stopPropagation(); onStar(message._id) }}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onStar(message._id) }}
+                                onTouchEnd={(e) => { e.stopPropagation(); }}
                                 title={isStarred ? "取消收藏" : "收藏"}
                                 className={cn(
                                     "flex items-center justify-center size-7 rounded-full",
@@ -363,7 +401,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={(e) => { e.stopPropagation(); handleCopy() }}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleCopy() }}
+                                onTouchEnd={(e) => { e.stopPropagation(); }}
                                 title="复制"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >
@@ -378,7 +416,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"secondary"}
                                 onClick={(e) => { e.stopPropagation(); handleTranslate() }}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleTranslate() }}
+                                onTouchEnd={(e) => { e.stopPropagation(); }}
                                 title={showTranslation ? "隐藏翻译" : "翻译成中文"}
                                 className={cn(
                                     "flex items-center justify-center size-7 rounded-full",
@@ -397,7 +435,7 @@ export default function SingleMessage({ message, isMine, isBot, receiverId, myId
                                 size={"icon"}
                                 variant={"destructive"}
                                 onClick={(e) => { e.stopPropagation(); setDeleteOpen(true) }}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setDeleteOpen(true) }}
+                                onTouchEnd={(e) => { e.stopPropagation(); }}
                                 title="删除"
                                 className="flex items-center justify-center size-7 rounded-full"
                             >

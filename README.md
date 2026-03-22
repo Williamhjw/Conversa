@@ -11,9 +11,10 @@
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-%2306B6D4.svg?style=flat&logo=tailwindcss&logoColor=white)
 ![七牛云](https://img.shields.io/badge/七牛云-00B4D8?style=flat&logo=qiniu&logoColor=white)
 ![智谱 GLM](https://img.shields.io/badge/智谱%20GLM-AI-4285F4?style=flat&logo=zhipu&logoColor=white)
+![高德地图](https://img.shields.io/badge/高德地图-Weather-00A3FF?style=flat&logo=amap&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)
 
-一个全栈、生产级的实时聊天应用，基于 MERN 技术栈和 Socket.IO 构建。功能包括一对一消息、由智谱 GLM 驱动的个性化 AI 聊天机器人、通过七牛云分享图片、邮箱验证、邮件通知，以及使用 React 19、TypeScript、Tailwind CSS v4 和 shadcn/ui 组件构建的完全响应式深色/浅色界面。
+一个全栈、生产级的实时聊天应用，基于 MERN 技术栈和 Socket.IO 构建。功能包括一对一/群组消息、由智谱 GLM 驱动的个性化 AI 聊天机器人（支持图片生成）、实时天气查询、LeetCode 刷题追踪、通过七牛云分享图片、邮箱验证、邮件通知，以及使用 React 19、TypeScript、Tailwind CSS v4 和 shadcn/ui 组件构建的完全响应式深色/浅色界面。
 
 </div>
 
@@ -54,7 +55,7 @@
 - 头像通过预签名 POST URL 直接从浏览器上传到七牛云（最大 5 MB，仅限图片）；删除后重置为 ui-avatars.com 生成的 URL
 
 ### 消息功能
-- **实时一对一聊天** — 基于 Socket.IO
+- **实时一对一/群组聊天** — 基于 Socket.IO
 - **文字和图片消息** — 图片上传到七牛云，可附带说明文字
 - **回复消息** — 每条消息存储 `replyTo` 引用；在界面中显示为引用上下文
 - **仅对我删除** — 仅从你的视图中硬删除消息（添加到 `hiddenFrom`）
@@ -68,11 +69,31 @@
 
 ### AI 聊天机器人
 - 每位用户注册时自动创建一个**个人 AI 聊天机器人**对话
-- 由 **智谱 GLM** 驱动，模型可配置
+- 由 **智谱 GLM-4.5-Air** 驱动，支持流式文字对话
+- **AI 图片生成** — 使用 CogView-3 模型根据文字描述生成图片，一键切换图片/文字模式
 - **流式响应** — 机器人回复通过 Socket.IO 逐块流式传输（`bot-chunk`、`bot-done`），文字逐步显示
 - **上下文感知** — 每次请求发送最近 19 条文字消息作为聊天历史，让机器人记住对话内容
 - **输入指示器** — 机器人生成时发送 `typing`/`stop-typing` 事件
 - **错误回滚** — 如果 GLM 流失败，用户消息会被删除并发送 `bot-error` 事件
+
+### 群组聊天
+- **创建群组** — 支持设置群组名称、头像、描述
+- **成员管理** — 添加/移除成员、设置管理员、转让群主
+- **AI 群消息总结** — 使用 GLM-4 自动总结未读群消息
+- **群组消息通知** — 显示群组头像和发送者名称
+
+### 实时天气
+- **位置自动获取** — 支持浏览器定位 + IP 定位回退
+- **当前天气** — 温度、体感温度、湿度、风速、能见度、气压
+- **AI 穿衣建议** — 基于天气数据的智能穿衣和出行建议
+- **未来预报** — 24小时逐小时预报 + 未来7天天气趋势
+- **响应式 UI** — 适配移动端和桌面端的天气卡片布局
+
+### LeetCode 刷题追踪
+- **题目列表** — 浏览 LeetCode 题目，支持难度筛选
+- **完成状态** — 标记题目为已解决/未解决
+- **进度统计** — 按难度统计刷题进度
+- **排行榜** — 查看好友刷题排名
 
 ### 邮件通知
 - 当收到消息且接收方**完全离线**（无打开的 socket）时，发送带有消息预览和对话深层链接的品牌 HTML 邮件
@@ -116,7 +137,8 @@
 | **数据库** | MongoDB (Mongoose 8) |
 | **实时通信** | Socket.IO 4（服务端 + 客户端） |
 | **身份验证** | JSON Web Tokens (jsonwebtoken), bcryptjs |
-| **AI** | 智谱 GLM |
+| **AI** | 智谱 GLM-4.5-Air (聊天), CogView-3 (图片生成) |
+| **天气 API** | 高德地图天气 API |
 | **文件存储** | 七牛云（预签名 POST 上传） |
 | **邮件** | Nodemailer (Gmail SMTP) — OTP 登录、邮箱验证、消息通知 |
 | **容器化** | Docker, Docker Compose |
@@ -140,17 +162,26 @@ conversa/
 │   │   │                              #   发送验证 OTP、验证邮箱
 │   │   ├── conversation-controller.js # 创建、列表、获取、切换置顶
 │   │   ├── message-controller.js      # 获取所有消息、删除、批量隐藏、收藏、清空、AI 流式
-│   │   └── user-controller.js         # 更新资料、拉黑、七牛云预签名、用户搜索、
-│   │                                  #   删除账户、获取拉黑状态
+│   │   ├── user-controller.js         # 更新资料、拉黑、七牛云预签名、用户搜索、
+│   │   │                              #   删除账户、获取拉黑状态
+│   │   ├── group-controller.js        # 群组创建、成员管理、AI 消息总结
+│   │   ├── weather-controller.js      # 天气查询、AI 穿衣建议
+│   │   ├── leetcode-controller.js     # LeetCode 题目、进度、排行榜
+│   │   └── image-controller.js        # AI 图片生成 (CogView-3)
 │   ├── Models/
 │   │   ├── User.js                    # 完整用户模式（见数据模型）
 │   │   ├── Conversation.js            # 成员、最新消息、未读计数
-│   │   └── Message.js                 # 已读、隐藏自、软删除、收藏者、回复引用
+│   │   ├── Message.js                 # 已读、隐藏自、软删除、收藏者、回复引用
+│   │   └── Group.js                   # 群组信息、成员、管理员
 │   ├── Routes/
 │   │   ├── auth-routes.js
 │   │   ├── conversation-routes.js
 │   │   ├── message-routes.js
-│   │   └── user-routes.js
+│   │   ├── user-routes.js
+│   │   ├── group-routes.js            # 群组管理路由
+│   │   ├── weather-routes.js          # 天气查询路由
+│   │   ├── leetcode-routes.js         # LeetCode 路由
+│   │   └── image-routes.js            # 图片生成路由
 │   ├── socket/
 │   │   ├── index.js                   # Socket.IO 设置、JWT 认证中间件、用户 Socket 映射
 │   │   └── handlers.js                # 所有 socket 事件处理器 + 邮件通知触发
@@ -178,13 +209,17 @@ conversa/
         │   ├── ConversationDetail.tsx # 聊天视图，支持流式机器人响应
         │   ├── StarredMessages.tsx
         │   ├── User.tsx               # 重定向助手
-        │   └── UserProfile.tsx        # 资料、密码、外观、通知设置
+        │   ├── UserProfile.tsx        # 资料、密码、外观、通知设置
+        │   ├── Weather.tsx            # 实时天气 + AI 建议
+        │   └── LeetCode.tsx           # LeetCode 刷题追踪
         ├── components/
         │   ├── layout/
         │   │   ├── DashboardLayout.tsx  # 认证 + 邮箱验证守卫
         │   │   ├── ConversationLayout.tsx
         │   │   └── DashboardSidebar.tsx
         │   ├── dashboard/             # 聊天专用组件
+        │   │   ├── MessageInput.tsx   # 消息输入（支持 AI 图片生成）
+        │   │   └── ...
         │   └── ui/                    # shadcn/ui 组件库
         ├── context/                   # AuthProvider, ChatProvider, ConversationsProvider
         ├── hooks/                     # use-auth, use-chat, use-conversations, use-socket
@@ -201,6 +236,8 @@ conversa/
 浏览器 ──HTTP──▶  Express REST API  ──▶  MongoDB
      ──WS────▶  Socket.IO Server  ──▶  MongoDB
                                 ──▶  Gmail SMTP（离线邮件通知）
+                                ──▶  智谱 GLM API（AI 聊天）
+                                ──▶  高德地图 API（天气）
 
 Socket.IO 认证
   每个 socket 连接在 handshake.auth.token 中提供 JWT。
@@ -221,6 +258,12 @@ AI 流式管道
   浏览器 ──send-message──▶  服务端检测到机器人成员
         ◀──bot-chunk───── 通过 Socket.IO 流式传输 GLM 块
         ◀──bot-done──────  最终保存的 Message 文档
+
+AI 图片生成管道
+  浏览器 ──图片生成模式──▶ 输入描述并发送
+        ──POST /image/generate──▶ 调用 CogView-3 API
+        ◀──图片 URL───────────── 返回生成结果
+        ──send-message──────────▶ 以 Bot 身份发送图片消息
 ```
 
 ---
@@ -251,7 +294,13 @@ AI 流式管道
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `members` | [ObjectId → User] | 参与者（始终为 2 人） |
+| `members` | [ObjectId → User] | 参与者（2 人对话或群组） |
+| `isGroup` | Boolean | 是否为群组对话 |
+| `groupName` | String | 群组名称（仅群组） |
+| `groupAvatar` | String | 群组头像 URL（仅群组） |
+| `groupDescription` | String | 群组描述（仅群组） |
+| `groupOwner` | ObjectId → User | 群主（仅群组） |
+| `groupAdmins` | [ObjectId → User] | 管理员列表（仅群组） |
 | `latestmessage` | String | 聊天列表预览文字 |
 | `unreadCounts` | [{userId, count}] | 每成员未读计数器 |
 | `timestamps` | auto | `createdAt`、`updatedAt` |
@@ -263,7 +312,7 @@ AI 流式管道
 | `conversationId` | ObjectId → Conversation | 必填 |
 | `senderId` | ObjectId → User | 必填 |
 | `text` | String | 无 `imageUrl` 时必填 |
-| `imageUrl` | String | 无 `text` 时必填；七牛云 URL |
+| `imageUrl` | String | 无 `text` 时必填；七牛云 URL 或 AI 生成图片 URL |
 | `seenBy` | [{user, seenAt}] | 已读回执 |
 | `hiddenFrom` | [ObjectId → User] | 对这些用户硬删除 |
 | `softDeleted` | Boolean | `true` = 对所有人显示"已删除"占位符 |
@@ -330,6 +379,44 @@ AI 流式管道
 | `page` | `1` | 整数 ≥ 1 |
 | `limit` | `20` | 1–50 |
 
+### 群组 — `/group`
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| `POST` | `/group/create` | ✅ | 创建群组 |
+| `GET` | `/group/:groupId` | ✅ | 获取群组详情 |
+| `PUT` | `/group/:groupId` | ✅ | 更新群组信息 |
+| `POST` | `/group/:groupId/members` | ✅ | 添加成员 |
+| `DELETE` | `/group/:groupId/members/:memberId` | ✅ | 移除成员 |
+| `POST` | `/group/:groupId/leave` | ✅ | 退出群组 |
+| `PUT` | `/group/:groupId/admin/:memberId` | ✅ | 设置/取消管理员 |
+| `PUT` | `/group/:groupId/transfer/:newOwnerId` | ✅ | 转让群主 |
+| `POST` | `/group/:groupId/summarize-unread` | ✅ | AI 总结未读消息 |
+
+### 天气 — `/weather`
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| `GET` | `/weather` | — | 获取当前位置天气 |
+| `POST` | `/weather/suggestion` | — | 获取 AI 穿衣建议 |
+
+### LeetCode — `/leetcode`
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| `POST` | `/leetcode/init` | — | 初始化题目数据 |
+| `GET` | `/leetcode/problems` | ✅ | 获取题目列表 |
+| `POST` | `/leetcode/problems/:problemId/toggle` | ✅ | 切换完成状态 |
+| `GET` | `/leetcode/progress` | ✅ | 获取刷题进度 |
+| `GET` | `/leetcode/leaderboard` | ✅ | 获取排行榜 |
+
+### 图片生成 — `/image`
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| `POST` | `/image/generate` | ✅ | 生成图片（CogView-3） |
+| `GET` | `/image/status` | — | 检查图片生成服务状态 |
+
 ---
 
 ## Socket.IO 事件
@@ -375,7 +462,6 @@ Socket 服务器需要在 `handshake.auth.token` 中传递有效的 JWT。
 
 ```env
 # ── 数据库 ──────────────────────────────────────────────────────────────────
-# Docker Compose 会自动覆盖指向 mongo 服务
 MONGO_URI=mongodb://localhost:27017/
 MONGO_DB_NAME=conversa
 
@@ -387,17 +473,26 @@ JWT_EXPIRY=7d
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 
-# ── 七牛云 ──────────────────────────────────────────────────────────────────
-QINIU_ACCESS_KEY=your-access-key
-QINIU_SECRET_KEY=your-secret-key
-QINIU_BUCKET=your-bucket-name
-QINIU_DOMAIN=https://your-domain.com
-
 # ── 智谱 GLM AI ─────────────────────────────────────────────────────────────
 GLM_API_KEY=your-glm-api-key
+GLM_MODEL=glm-4.5-air              # 聊天模型
+IMAGE_GEN_MODEL=cogview-3          # 图片生成模型
+
+# ── 高德地图 API ────────────────────────────────────────────────────────────
+AMAP_API_KEY=your-amap-api-key     # 用于天气查询
+
+# ── 七牛云存储 ──────────────────────────────────────────────────────────────
+QINIU_ACCESS_KEY=your-qiniu-ak
+QINIU_SECRET_KEY=your-qiniu-sk
+QINIU_BUCKET=your-bucket
+QINIU_DOMAIN=your-domain.com
 
 # ── 前端 ────────────────────────────────────────────────────────────────────
 VITE_API_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:5173
+
+# ── CORS ────────────────────────────────────────────────────────────────────
+CORS_ORIGIN=*
 ```
 
 ---
@@ -495,7 +590,6 @@ VITE_API_URL=http://localhost:5000
 - **输入验证** — 所有 API 输入经过验证和清理
 - **CORS** — 配置允许的源
 - **速率限制** — 防止暴力攻击（可配置）
-- **七牛云预签名 URL** — 直接上传，凭证不经过服务器
 
 ---
 
@@ -507,26 +601,6 @@ VITE_API_URL=http://localhost:5000
 
 ---
 
-## 贡献
-
-欢迎贡献！请提交 issue 或 pull request 来改进或修复问题。
-
-**贡献步骤：**
-1. Fork 仓库并为你的功能或修复创建新分支。
-2. 进行修改并编写清晰的提交信息。
-3. 确保所有测试通过且应用正常运行。
-4. 提交 pull request，描述你的修改及为何应该合并。
-
 ## 许可证
 
-MIT — 详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 关于作者
-
-由 **Pankil Soni** 构建
-
-- 邮箱: pmsoni2016@gmail.com
-- LinkedIn: [pankil-soni-5a0541170](https://www.linkedin.com/in/pankil-soni-5a0541170/)
-- Kaggle: [pankilsoni](https://www.kaggle.com/pankilsoni)
+MIT License — 详见 [LICENSE](LICENSE) 文件。

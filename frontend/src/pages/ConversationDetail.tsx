@@ -398,7 +398,15 @@ export default function ConversationDetail() {
     useEffect(() => {
         if (!id) return
         emitJoinChat(id)
+
+        const onReconnect = () => {
+            console.log("Socket reconnected, rejoining room:", id)
+            emitJoinChat(id)
+        }
+        socket.on("connect", onReconnect)
+
         return () => {
+            socket.off("connect", onReconnect)
             emitLeaveChat(id)
             setActiveChatId("")
             setReceiver(null)
@@ -568,7 +576,7 @@ export default function ConversationDetail() {
                     // Update the sidebar preview for this user only
                     const latestMsg = newList[newList.length - 1]
                     const newPreview = latestMsg
-                        ? (latestMsg.softDeleted ? "This message was deleted" : (latestMsg.text || "sent an image"))
+                        ? (latestMsg.softDeleted ? "此消息已删除" : (latestMsg.text || "发送了一张图片"))
                         : ""
                     setConversationsList((prev) =>
                         prev.map((c) => c._id === id ? { ...c, latestmessage: newPreview } : c)
@@ -666,7 +674,7 @@ export default function ConversationDetail() {
             {/* Messages */}
             <div
                 ref={scrollAreaRef}
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5"
+                className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none px-4 py-3 space-y-1.5 touch-pan-y"
             >
                 {isChatLoading ? (
                     <MessagesSkeleton />

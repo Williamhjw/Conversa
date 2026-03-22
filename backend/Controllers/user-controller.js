@@ -1,62 +1,10 @@
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const qiniu = require("qiniu");
+const path = require("path");
+const fs = require("fs");
 const User = require("../Models/User.js");
 const Conversation = require("../Models/Conversation.js");
-const {
-  QINIU_ACCESS_KEY,
-  QINIU_SECRET_KEY,
-  QINIU_BUCKET,
-  QINIU_DOMAIN
-} = require("../secrets.js");
-
-const mac = new qiniu.auth.digest.Mac(QINIU_ACCESS_KEY, QINIU_SECRET_KEY);
-const config = new qiniu.conf.Config();
-const putPolicy = new qiniu.rs.PutPolicy({
-  scope: QINIU_BUCKET,
-  expires: 900, // 15 minutes
-});
-
-const getPresignedUrl = async (req, res) => {
-  const filename = req.query.filename;
-  const filetype = req.query.filetype;
-
-  if (!filename || !filetype) {
-    return res
-      .status(400)
-      .json({ error: "Filename and filetype are required" });
-  }
-
-  if (!filetype.startsWith("image/")) {
-    return res.status(400).json({ error: "Invalid file type" });
-  }
-
-  const userId = req.user.id;
-
-  try {
-    // Generate upload token
-    const uploadToken = putPolicy.uploadToken(mac);
-
-    // Generate unique key for the file
-    const key = `conversa/${userId}/${crypto.randomUUID()}-${filename}`;
-
-    // Get upload URL (Qiniu uses zone-based URLs)
-    const zone = qiniu.zone.Zone_z0; // 华东机房，可根据需要调整
-    const formUploader = new qiniu.form_up.FormUploader(config);
-    const putExtra = new qiniu.form_up.PutExtra();
-    putExtra.fname = filename;
-    putExtra.mimeType = filetype;
-
-    return res.status(200).json({
-      token: uploadToken,
-      key: key,
-      uploadUrl: `https://upload.qiniup.com`,
-      domain: QINIU_DOMAIN,
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-};
+const { FRONTEND_URL } = require("../secrets.js");
 
 const getOnlineStatus = async (req, res) => {
   const userId = req.params.id;
@@ -235,6 +183,28 @@ const updateprofile = async (req, res) => {
   }
 };
 
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "没有上传文件" });
+    }
+
+    // Get the protocol and host from the request for dynamic URL construction
+    const protocol = req.protocol;
+    const host = req.get("host");
+    const serverUrl = `${protocol}://${host}`;
+    const fileUrl = `${serverUrl}/uploads/${req.user.id}/${req.file.filename}`;
+    
+    // Update user's profilePic in database
+    await User.findByIdAndUpdate(req.user.id, { profilePic: fileUrl });
+
+    res.json({ url: fileUrl, message: "头像上传成功" });
+  } catch (error) {
+    console.error("Avatar upload error:", error);
+    res.status(500).json({ error: "头像上传失败" });
+  }
+};
+
 const deleteAccount = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -307,4 +277,4 @@ const checkDuplicateUsers = async (req, res) => {
   }
 };
 
-module.exports = { getPresignedUrl, getOnlineStatus, getNonFriendsList, updateprofile, blockUser, unblockUser, getBlockStatus, deleteAccount, checkDuplicateUsers };
+module.exports = { getOnlineStatus, getNonFriendsList, updateprofile, uploadAvatar, blockUser, unblockUser, getBlockStatus, deleteAccount, checkDuplicateUsers };

@@ -142,6 +142,46 @@ module.exports = (io, socket, userSocketMap) => {
 
       if (botMember) {
         const botId = botMember._id.toString();
+        
+        // Handle image generation request (imageUrl present but text indicates generation)
+        if (imageUrl && text?.includes("✨ 已为您生成图片")) {
+          // Save bot's image message
+          const botMessage = await Message.create({
+            conversationId,
+            senderId: botId,
+            text,
+            imageUrl,
+          });
+          
+          await botMessage.populate('senderId', 'name profilePic');
+          
+          // Update conversation
+          conversation.latestmessage = "AI生成了一张图片";
+          await conversation.save();
+          
+          // Emit to room
+          io.to(conversationId).emit("receive-message", botMessage);
+          return;
+        }
+        
+        // Handle error message from bot
+        if (text?.includes("❌ 图片生成失败")) {
+          const botMessage = await Message.create({
+            conversationId,
+            senderId: botId,
+            text,
+          });
+          
+          await botMessage.populate('senderId', 'name profilePic');
+          
+          conversation.latestmessage = text;
+          await conversation.save();
+          
+          io.to(conversationId).emit("receive-message", botMessage);
+          return;
+        }
+        
+        // Normal text streaming for chat
         const tempId = `bot-stream-${Date.now()}`;
 
         try {
@@ -172,29 +212,67 @@ module.exports = (io, socket, userSocketMap) => {
 
       // ── Group chat processing ────────────────────────────────────────────
       if (conversation.isGroup) {
-        const message = await sendMessageHandler({
+        const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
+        const senderSocketIds = userSocketMap.get(senderId);
+
+        // Check which members are currently in the room
+        const membersInRoom = new Set();
+        if (conversationRoom) {
+          for (const [userId, socketIds] of userSocketMap) {
+            const isInRoom = Array.from(socketIds).some((sid) =>
+              conversationRoom.has(sid)
+            );
+            if (isInRoom) {
+              membersInRoom.add(userId);
+            }
+          }
+        }
+
+        // Check if sender is in room
+        let senderInRoom = false;
+        if (senderSocketIds && conversationRoom) {
+          senderInRoom = Array.from(senderSocketIds).some((sid) =>
+            conversationRoom.has(sid)
+          );
+        }
+
+        // Create message with proper seenBy for members in room
+        const seenByMembers = Array.from(membersInRoom).map((userId) => ({
+          user: userId,
+          seenAt: new Date(),
+        }));
+
+        const message = await Message.create({
+          conversationId,
+          senderId,
           text,
           imageUrl,
-          senderId,
-          conversationId,
-          receiverId: null,
-          isReceiverInsideChatRoom: false,
-          replyTo: replyTo || null,
+          seenBy: seenByMembers,
+          ...(replyTo && { replyTo }),
         });
+
+        // Update conversation
+        conversation.latestmessage = text || "发送了一张图片";
+
+        // Update unread counts only for members NOT in room (excluding sender)
+        conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
+          const userId = unread.userId.toString();
+          if (userId !== senderId && !membersInRoom.has(userId)) {
+            return { ...unread, count: unread.count + 1 };
+          }
+          return unread;
+        });
+
+        await conversation.save();
+        await message.populate('replyTo', 'text imageUrl senderId softDeleted');
 
         console.log(`Group message saved: ${message._id}, conversationId: ${conversationId}, senderId: ${senderId}`);
 
         io.to(conversationId).emit("receive-message", message);
 
-        const senderSocketIds = userSocketMap.get(senderId);
-        const conversationRoom = io.sockets.adapter.rooms.get(conversationId);
-        if (senderSocketIds && conversationRoom) {
-          const senderInRoom = Array.from(senderSocketIds).some((sid) =>
-            conversationRoom.has(sid)
-          );
-          if (!senderInRoom) {
-            io.to(senderId).emit("receive-message", message);
-          }
+        // Send to sender if not in room
+        if (!senderInRoom) {
+          io.to(senderId).emit("receive-message", message);
         }
 
         const senderInfo = conversation.members.find(
@@ -210,13 +288,7 @@ module.exports = (io, socket, userSocketMap) => {
         for (const member of otherMembers) {
           const memberId = member._id.toString();
           const memberSocketIds = userSocketMap.get(memberId);
-
-          let memberInRoom = false;
-          if (memberSocketIds && conversationRoom) {
-            memberInRoom = Array.from(memberSocketIds).some((sid) =>
-              conversationRoom.has(sid)
-            );
-          }
+          const memberInRoom = membersInRoom.has(memberId);
 
           if (!memberInRoom) {
             io.to(memberId).emit("receive-message", message);
@@ -308,29 +380,19 @@ module.exports = (io, socket, userSocketMap) => {
         }
       }
 
-      if (!isReceiverInsideChatRoom) {
-        io.to(receiverId.toString()).emit("receive-message", message);
-        console.log(`Emitted receive-message to receiver ${receiverId}`);
-      }
-
-      conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
-        if (unread.userId.toString() === receiverId.toString()) {
-          return { userId: unread.userId, count: unread.count + 1 };
-        }
-        return unread;
-      });
-
-      conversation.latestmessage = text || "sent an image";
+      io.to(receiverId.toString()).emit("receive-message", message);
+      console.log(`Emitted receive-message to receiver ${receiverId}`);
 
       if (!isReceiverInsideChatRoom) {
         console.log("Emitting new message notification to:", receiverId.toString());
         const senderInfo = conversation.members.find(
           (m) => m._id.toString() === senderId
         );
+        const updatedConversation = await Conversation.findById(conversationId).populate("members");
         io.to(receiverId.toString()).emit("new-message-notification", {
           message,
           sender: senderInfo,
-          conversation: conversation
+          conversation: updatedConversation
         });
 
         const isReceiverOffline = !receiverSocketIds || receiverSocketIds.size === 0;
@@ -377,8 +439,8 @@ module.exports = (io, socket, userSocketMap) => {
         const newLatest =
           !latestNonDeleted ||
           new Date(updated.createdAt) >= new Date(latestNonDeleted.createdAt)
-            ? 'This message was deleted'
-            : latestNonDeleted.text || 'sent an image';
+            ? '此消息已删除'
+            : latestNonDeleted.text || '发送了一张图片';
 
         // Persist new preview to the conversation document
         await Conversation.findByIdAndUpdate(
@@ -402,7 +464,7 @@ module.exports = (io, socket, userSocketMap) => {
         }).sort({ createdAt: -1 });
 
         const newLatest = latestVisible
-          ? (latestVisible.softDeleted ? 'This message was deleted' : (latestVisible.text || 'sent an image'))
+          ? (latestVisible.softDeleted ? '此消息已删除' : (latestVisible.text || '发送了一张图片'))
           : '';
 
         // Only emit to the requester so their sidebar preview updates

@@ -92,7 +92,7 @@ const allMessage = async (req, res) => {
       if (!msg.softDeleted) return msg;
       return {
         ...msg,
-        text: "This message was deleted",
+        text: "此消息已删除",
         imageUrl: undefined,
       };
     });
@@ -320,7 +320,7 @@ const sendMessageHandler = async (data) => {
       ...(replyTo && { replyTo }),
     });
 
-    conversation.latestmessage = text || "sent an image";
+    conversation.latestmessage = text || "发送了一张图片";
     conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
       if (unread.userId.toString() !== senderId) {
         return { ...unread, count: unread.count + 1 };
@@ -342,7 +342,7 @@ const sendMessageHandler = async (data) => {
       ...(replyTo && { replyTo }),
     });
 
-    conversation.latestmessage = text || "sent an image";
+    conversation.latestmessage = text || "发送了一张图片";
     conversation.unreadCounts = conversation.unreadCounts.map((unread) => {
       if (unread.userId.toString() === receiverId.toString()) {
         return { ...unread, count: unread.count + 1 };
@@ -366,7 +366,7 @@ const sendMessageHandler = async (data) => {
       ],
       ...(replyTo && { replyTo }),
     });
-    conversation.latestmessage = text || "sent an image";
+    conversation.latestmessage = text || "发送了一张图片";
     await conversation.save();
     await message.populate('replyTo', 'text imageUrl senderId softDeleted');
     return message;

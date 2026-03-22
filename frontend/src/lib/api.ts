@@ -235,11 +235,15 @@ export const userApi = {
             body: JSON.stringify(payload),
         }).then(handleResponse),
 
-    getPresignedUrl: (filename: string, filetype: string) =>
-        fetch(
-            `${API_BASE}/user/presigned-url?filename=${encodeURIComponent(filename)}&filetype=${encodeURIComponent(filetype)}`,
-            { headers: headers() }
-        ).then(handleResponse),
+    uploadAvatar: (file: File) => {
+        const formData = new FormData()
+        formData.append("avatar", file)
+        return fetch(`${API_BASE}/user/avatar`, {
+            method: "POST",
+            headers: { "auth-token": localStorage.getItem("auth-token") || "" },
+            body: formData,
+        }).then(handleResponse)
+    },
 
     blockUser: (userId: string) =>
         fetch(`${API_BASE}/user/block/${userId}`, {

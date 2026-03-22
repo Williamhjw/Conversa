@@ -328,18 +328,46 @@ export default function SnakeGame() {
 
             <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden lg:overflow-y-auto">
                 <div className="flex flex-col lg:flex-row gap-4 items-center w-full max-w-4xl">
-                    <div ref={containerRef} className="w-full flex justify-center">
-                        <Card className="p-0 overflow-hidden shrink-0 select-none touch-none lg:select-auto lg:touch-auto">
+                    <div ref={containerRef} className="w-full flex flex-col items-center gap-3">
+                        <div className="flex items-center justify-center gap-4 w-full lg:hidden">
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
+                                <Trophy className="size-5 text-amber-500" />
+                                <div>
+                                    <div className="text-[10px] text-muted-foreground leading-none">最高分</div>
+                                    <div className="text-lg font-bold leading-tight">{highScore}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20">
+                                <div className="size-5 rounded-full bg-primary/20 flex items-center justify-center">
+                                    <span className="text-xs font-bold text-primary">{score}</span>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-muted-foreground leading-none">当前分数</div>
+                                    <div className="text-lg font-bold text-primary leading-tight">{score}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Card className="p-0 overflow-hidden shrink-0 select-none touch-none lg:select-auto lg:touch-auto relative">
                             <canvas
                                 ref={canvasRef}
                                 width={canvasSize}
                                 height={canvasSize}
                                 className="block pointer-events-none lg:pointer-events-auto"
                             />
+                            {gameOver && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg lg:hidden">
+                                    <div className="text-center p-4">
+                                        <p className="text-white text-lg font-bold mb-2">游戏结束</p>
+                                        <p className="text-white/80 text-sm mb-3">得分: {score}</p>
+                                        <Button size="sm" onClick={resetGame}>重新开始</Button>
+                                    </div>
+                                </div>
+                            )}
                         </Card>
                     </div>
 
-                    <Card className="w-full lg:w-64 shrink-0">
+                    <Card className="w-full lg:w-64 shrink-0 hidden lg:block">
                         <CardHeader className="hidden lg:block">
                             <CardTitle className="text-lg">游戏信息</CardTitle>
                         </CardHeader>
@@ -396,95 +424,82 @@ export default function SnakeGame() {
             </div>
 
             <div className="shrink-0 p-4 border-t bg-background">
-                <div className="flex flex-col items-center gap-3 lg:hidden">
-                    <div className="flex items-center justify-center gap-8 w-full">
-                        <div className="text-center">
-                            <div className="text-xs text-muted-foreground mb-1">最高分</div>
-                            <div className="text-lg font-bold flex items-center justify-center gap-1">
-                                <Trophy className="size-4 text-amber-500" /> {highScore}
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-xs text-muted-foreground mb-1">当前分数</div>
-                            <div className="text-lg font-bold text-primary">{score}</div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        <div className="grid grid-cols-3 gap-1.5 w-32">
+                <div className="flex flex-col items-center gap-4 lg:hidden">
+                    <div className="flex items-center gap-4">
+                        <div className="grid grid-cols-3 gap-2 w-36">
                             <div></div>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-12 w-full touch-manipulation"
+                                className="h-14 w-full touch-manipulation rounded-xl bg-linear-to-b from-background to-muted/50 shadow-md active:scale-95 transition-transform"
                                 onTouchStart={(e) => { e.preventDefault(); handleDirectionChange("UP") }}
                                 onClick={() => handleDirectionChange("UP")}
                             >
-                                <ArrowUp className="size-5" />
+                                <ArrowUp className="size-6" />
                             </Button>
                             <div></div>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-12 w-full touch-manipulation"
+                                className="h-14 w-full touch-manipulation rounded-xl bg-linear-to-b from-background to-muted/50 shadow-md active:scale-95 transition-transform"
                                 onTouchStart={(e) => { e.preventDefault(); handleDirectionChange("LEFT") }}
                                 onClick={() => handleDirectionChange("LEFT")}
                             >
-                                <ArrowLeftIcon className="size-5" />
+                                <ArrowLeftIcon className="size-6" />
                             </Button>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-12 w-full touch-manipulation"
+                                className="h-14 w-full touch-manipulation rounded-xl bg-linear-to-b from-background to-muted/50 shadow-md active:scale-95 transition-transform"
                                 onTouchStart={(e) => { e.preventDefault(); handleDirectionChange("DOWN") }}
                                 onClick={() => handleDirectionChange("DOWN")}
                             >
-                                <ArrowDown className="size-5" />
+                                <ArrowDown className="size-6" />
                             </Button>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-12 w-full touch-manipulation"
+                                className="h-14 w-full touch-manipulation rounded-xl bg-linear-to-b from-background to-muted/50 shadow-md active:scale-95 transition-transform"
                                 onTouchStart={(e) => { e.preventDefault(); handleDirectionChange("RIGHT") }}
                                 onClick={() => handleDirectionChange("RIGHT")}
                             >
-                                <ArrowRight className="size-5" />
+                                <ArrowRight className="size-6" />
                             </Button>
                         </div>
 
                         <div className="flex flex-col gap-2">
                             {!gameStarted || gameOver ? (
-                                <Button onClick={resetGame}>
+                                <Button 
+                                    className="h-14 px-6 rounded-xl shadow-md"
+                                    onClick={resetGame}
+                                >
                                     {gameOver ? "重新开始" : "开始游戏"}
                                 </Button>
                             ) : (
                                 <Button
                                     variant="outline"
+                                    className="h-14 px-6 rounded-xl shadow-md"
                                     onClick={() => setIsPaused(!isPaused)}
                                 >
                                     {isPaused ? (
                                         <>
-                                            <Play className="size-4 mr-2" /> 继续
+                                            <Play className="size-5 mr-2" /> 继续
                                         </>
                                     ) : (
                                         <>
-                                            <Pause className="size-4 mr-2" /> 暂停
+                                            <Pause className="size-5 mr-2" /> 暂停
                                         </>
                                     )}
                                 </Button>
                             )}
-                            {gameOver && (
-                                <div className="text-xs text-destructive text-center">
-                                    游戏结束
-                                </div>
-                            )}
-                            {isPaused && !gameOver && (
-                                <div className="text-xs text-muted-foreground text-center">
-                                    暂停中
-                                </div>
-                            )}
                         </div>
                     </div>
+
+                    {isPaused && !gameOver && gameStarted && (
+                        <div className="px-4 py-2 rounded-full text-sm font-medium bg-primary/10 text-primary">
+                            游戏暂停中
+                        </div>
+                    )}
                 </div>
 
                 <p className="text-sm text-muted-foreground text-center hidden lg:block">

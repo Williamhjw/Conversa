@@ -102,17 +102,24 @@ export default function NotificationListener() {
             const bannersEnabled = localStorage.getItem(LS_NOTIF_BANNERS) !== "false"
             if (!bannersEnabled) return
 
+            // Determine avatar and name to display
+            const isGroup = data.conversation.isGroup
+            const displayAvatar = isGroup ? data.conversation.groupAvatar : sender.profilePic
+            const displayName = isGroup
+                ? `${data.conversation.groupName} (${sender.name})`
+                : sender.name
+
             toast.custom(
                 (t) => (
                     <div className="flex items-center gap-3 bg-background border rounded-xl shadow-lg px-4 py-3 w-85 max-w-[95vw]">
                         <Avatar className="size-10 shrink-0">
-                            <AvatarImage src={sender.profilePic} alt={sender.name} />
+                            <AvatarImage src={displayAvatar} alt={displayName} />
                             <AvatarFallback className="bg-primary/15  text-xs font-semibold">
-                                {sender.isBot ? <Bot className="size-4" /> : initials(sender.name)}
+                                {sender.isBot ? <Bot className="size-4" /> : initials(isGroup ? data.conversation.groupName || "群" : sender.name)}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold leading-tight truncate">{sender.name}</p>
+                            <p className="text-sm font-semibold leading-tight truncate">{displayName}</p>
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {message.text ?? "发送了一张图片"}
                             </p>

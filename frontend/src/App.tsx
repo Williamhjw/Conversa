@@ -16,6 +16,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Games from "./pages/Games";
 import SnakeGame from "./pages/SnakeGame";
 import LeetCode from "./pages/LeetCode";
+import Weather from "./pages/Weather";
 
 export function App() {
 
@@ -44,6 +45,7 @@ export function App() {
           <Route path="/user/games" element={<Games />} />
           <Route path="/user/games/snake" element={<SnakeGame />} />
           <Route path="/user/games/leetcode" element={<LeetCode />} />
+          <Route path="/user/weather" element={<Weather />} />
           <Route element={<ConversationLayout />}>
             <Route path="/user/conversations" element={<Conversations />} />
             <Route path="/user/conversations/:id" element={<ConversationDetail />} />

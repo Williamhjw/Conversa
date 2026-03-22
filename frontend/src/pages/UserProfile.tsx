@@ -213,20 +213,8 @@ const UserProfile = () => {
         if (!file.type.startsWith("image/")) { toast.error("请选择图片文件"); return }
         setAvatarUploading(true)
         try {
-            const { token, key, domain } = await userApi.getPresignedUrl(file.name, file.type) as { token: string; key: string; domain: string }
-
-            const form = new FormData()
-            form.append("token", token)
-            form.append("key", key)
-            form.append("file", file)
-
-            const upload = await fetch("https://upload.qiniup.com", { method: "POST", body: form })
-            if (!upload.ok) throw new Error("Upload failed")
-
-            const imageUrl = `${domain}/${key}`
-
-            await userApi.updateProfile({ profilePic: imageUrl })
-            setUser({ ...user, profilePic: imageUrl })
+            const data = await userApi.uploadAvatar(file) as { url: string; message: string }
+            setUser({ ...user, profilePic: data.url })
             toast.success("头像已更新")
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "上传失败")
