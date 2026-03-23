@@ -31,6 +31,9 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    volumes:
+      # Persist uploaded files (avatars, chat images)
+      - uploads_data:/app/uploads
 
   # ── Frontend (Vite build → nginx) ─────────────────────────────────────────
   frontend:
@@ -47,3 +50,4 @@ services:
 
 volumes:
   mongo_data:
+  uploads_data:

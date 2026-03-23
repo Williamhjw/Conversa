@@ -2,8 +2,8 @@ const Conversation = require("../Models/Conversation.js");
 const User = require("../Models/User.js");
 const Message = require("../Models/Message.js");
 const {
-  GEMINI_MODEL,
-  GEMINI_API_KEY,
+  GLM_MODEL,
+  GLM_API_KEY,
 } = require("../secrets.js");
 
 function sanitizeForMember(member, requesterId) {
@@ -487,10 +487,10 @@ const summarizeUnread = async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GEMINI_API_KEY}`,
+        "Authorization": `Bearer ${GLM_API_KEY}`,
       },
       body: JSON.stringify({
-        model: GEMINI_MODEL,
+        model: GLM_MODEL,
         messages: [
           {
             role: "system",

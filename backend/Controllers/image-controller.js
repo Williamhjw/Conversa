@@ -1,4 +1,4 @@
-const { GEMINI_API_KEY, IMAGE_GEN_MODEL } = require("../secrets.js");
+const { GLM_API_KEY, IMAGE_GEN_MODEL } = require("../secrets.js");
 
 /**
  * Generate image using CogView-3 model
@@ -12,7 +12,7 @@ const generateImage = async (req, res) => {
             return res.status(400).json({ error: '请提供图片描述' });
         }
 
-        if (!GEMINI_API_KEY) {
+        if (!GLM_API_KEY) {
             return res.status(500).json({ error: 'AI服务未配置' });
         }
 
@@ -24,7 +24,7 @@ const generateImage = async (req, res) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${GEMINI_API_KEY}`,
+                "Authorization": `Bearer ${GLM_API_KEY}`,
             },
             body: JSON.stringify({
                 model: IMAGE_GEN_MODEL,
@@ -75,7 +75,7 @@ const generateImage = async (req, res) => {
  */
 const checkImageGenStatus = async (req, res) => {
     res.json({
-        available: !!GEMINI_API_KEY,
+        available: !!GLM_API_KEY,
         model: IMAGE_GEN_MODEL
     });
 };

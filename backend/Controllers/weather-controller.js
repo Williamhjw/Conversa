@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { GEMINI_API_KEY, AMAP_API_KEY } = require("../secrets.js");
+const { GLM_API_KEY, AMAP_API_KEY } = require("../secrets.js");
 
 const windPowerToSpeed = (windPower) => {
     if (!windPower) return 0;
@@ -103,7 +103,7 @@ const getSuggestion = async (req, res) => {
     try {
         const { temperature, feelsLike, humidity, windSpeed, description, location } = req.body;
 
-        if (!GEMINI_API_KEY) {
+        if (!GLM_API_KEY) {
             return res.json({
                 clothing: "AI服务暂未配置，无法提供穿衣建议。",
                 travel: "AI服务暂未配置，无法提供出行提醒。"
@@ -149,7 +149,7 @@ const getSuggestion = async (req, res) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${GEMINI_API_KEY}`,
+                "Authorization": `Bearer ${GLM_API_KEY}`,
             },
             body: JSON.stringify({
                 model: "glm-4",
