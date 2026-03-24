@@ -99,11 +99,18 @@ initSocket(server); // Initialize socket.io logic
 
 // Start server and connect to database
 const start = async () => {
-  await connectDB();
+  try {
+    await connectDB();
+    startStaleOnlineUsersJob();
+  } catch (error) {
+    console.error("Database connection failed:", error.message);
+  }
+  
+  // Always start server, even if database connection fails
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server started at http://localhost:${PORT}`);
+    console.log(`📡 Listening on 0.0.0.0:${PORT}`);
   });
-  startStaleOnlineUsersJob();
 };
 
 start();
