@@ -9,12 +9,13 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-%23000000.svg?style=flat&logo=socket.io&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-%2306B6D4.svg?style=flat&logo=tailwindcss&logoColor=white)
-![七牛云](https://img.shields.io/badge/七牛云-00B4D8?style=flat&logo=qiniu&logoColor=white)
 ![智谱 GLM](https://img.shields.io/badge/智谱%20GLM-AI-4285F4?style=flat&logo=zhipu&logoColor=white)
 ![高德地图](https://img.shields.io/badge/高德地图-Weather-00A3FF?style=flat&logo=amap&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)
 
-一个全栈、生产级的实时聊天应用，基于 MERN 技术栈和 Socket.IO 构建。功能包括一对一/群组消息、由智谱 GLM 驱动的个性化 AI 聊天机器人（支持图片生成）、实时天气查询、LeetCode 刷题追踪、通过七牛云分享图片、邮箱验证、邮件通知，以及使用 React 19、TypeScript、Tailwind CSS v4 和 shadcn/ui 组件构建的完全响应式深色/浅色界面。
+**[🚀 在线演示](https://conversa-frontend-x7er.onrender.com)**
+
+一个全栈、生产级的实时聊天应用，基于 MERN 技术栈和 Socket.IO 构建。功能包括一对一/群组消息、由智谱 GLM 驱动的个性化 AI 聊天机器人（支持图片生成）、实时天气查询、LeetCode 刷题追踪、股票行情查询、贪吃蛇游戏、通过七牛云分享图片、邮箱验证、邮件通知，以及使用 React 19、TypeScript、Tailwind CSS v4 和 shadcn/ui 组件构建的完全响应式深色/浅色界面。
 
 </div>
 
@@ -95,6 +96,19 @@
 - **进度统计** — 按难度统计刷题进度
 - **排行榜** — 查看好友刷题排名
 
+### 股票行情查询
+- **实时行情** — 查看沪深港股票实时价格、涨跌幅、成交量等数据
+- **自选股管理** — 添加/移除自选股票，一键刷新行情
+- **历史走势** — 支持 1天、1周、1月、3月、6月 的 K 线数据
+- **智能搜索** — 支持股票代码和名称搜索
+- **响应式图表** — 使用 Recharts 绘制美观的价格走势图
+
+### 游戏中心
+- **贪吃蛇** — 经典贪吃蛇游戏，支持键盘和触屏操作
+- **本地最高分** — 记录个人最高分
+- **移动端优化** — 专为移动端设计的触控按钮
+- **暂停/继续** — 支持游戏暂停和继续
+
 ### 邮件通知
 - 当收到消息且接收方**完全离线**（无打开的 socket）时，发送带有消息预览和对话深层链接的品牌 HTML 邮件
 - **即发即忘** — 邮件在 socket 路径中从不等待，消息传递零延迟
@@ -132,13 +146,14 @@
 
 | 层级 | 技术 |
 |---|---|
-| **前端** | React 19, TypeScript, Vite 7, Tailwind CSS v4, shadcn/ui, React Router v7 |
+| **前端** | React 19, TypeScript, Vite 7, Tailwind CSS v4, shadcn/ui, React Router v7, Recharts |
 | **后端** | Node.js, Express.js 4 |
 | **数据库** | MongoDB (Mongoose 8) |
 | **实时通信** | Socket.IO 4（服务端 + 客户端） |
 | **身份验证** | JSON Web Tokens (jsonwebtoken), bcryptjs |
 | **AI** | 智谱 GLM-4.5-Air (聊天), CogView-3 (图片生成) |
 | **天气 API** | 高德地图天气 API |
+| **股票 API** | 新浪财经 API |
 | **文件存储** | 七牛云（预签名 POST 上传） |
 | **邮件** | Nodemailer (Gmail SMTP) — OTP 登录、邮箱验证、消息通知 |
 | **容器化** | Docker, Docker Compose |
@@ -167,6 +182,7 @@ conversa/
 │   │   ├── group-controller.js        # 群组创建、成员管理、AI 消息总结
 │   │   ├── weather-controller.js      # 天气查询、AI 穿衣建议
 │   │   ├── leetcode-controller.js     # LeetCode 题目、进度、排行榜
+│   │   ├── stock-controller.js        # 股票行情、自选股管理
 │   │   └── image-controller.js        # AI 图片生成 (CogView-3)
 │   ├── Models/
 │   │   ├── User.js                    # 完整用户模式（见数据模型）
@@ -181,6 +197,7 @@ conversa/
 │   │   ├── group-routes.js            # 群组管理路由
 │   │   ├── weather-routes.js          # 天气查询路由
 │   │   ├── leetcode-routes.js         # LeetCode 路由
+│   │   ├── stock-routes.js            # 股票行情路由
 │   │   └── image-routes.js            # 图片生成路由
 │   ├── socket/
 │   │   ├── index.js                   # Socket.IO 设置、JWT 认证中间件、用户 Socket 映射
@@ -211,7 +228,10 @@ conversa/
         │   ├── User.tsx               # 重定向助手
         │   ├── UserProfile.tsx        # 资料、密码、外观、通知设置
         │   ├── Weather.tsx            # 实时天气 + AI 建议
-        │   └── LeetCode.tsx           # LeetCode 刷题追踪
+        │   ├── LeetCode.tsx           # LeetCode 刷题追踪
+        │   ├── Stock.tsx              # 股票行情查询
+        │   ├── Games.tsx              # 游戏中心
+        │   └── SnakeGame.tsx          # 贪吃蛇游戏
         ├── components/
         │   ├── layout/
         │   │   ├── DashboardLayout.tsx  # 认证 + 邮箱验证守卫
@@ -238,6 +258,7 @@ conversa/
                                 ──▶  Gmail SMTP（离线邮件通知）
                                 ──▶  智谱 GLM API（AI 聊天）
                                 ──▶  高德地图 API（天气）
+                                ──▶  新浪财经 API（股票行情）
 
 Socket.IO 认证
   每个 socket 连接在 handshake.auth.token 中提供 JWT。
@@ -288,6 +309,7 @@ AI 图片生成管道
 | `otpExpiry` | Date | OTP 过期时间戳 |
 | `blockedUsers` | [ObjectId → User] | 该用户拉黑的用户 |
 | `pinnedConversations` | [ObjectId → Conversation] | 置顶对话 ID |
+| `watchlist` | [{symbol, name, addedAt}] | 股票自选列表 |
 | `isDeleted` | Boolean | 匿名化账户的软删除标志 |
 
 ### Conversation
@@ -409,6 +431,18 @@ AI 图片生成管道
 | `POST` | `/leetcode/problems/:problemId/toggle` | ✅ | 切换完成状态 |
 | `GET` | `/leetcode/progress` | ✅ | 获取刷题进度 |
 | `GET` | `/leetcode/leaderboard` | ✅ | 获取排行榜 |
+
+### 股票 — `/stock`
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| `GET` | `/stock/search` | — | 搜索股票（支持代码和名称） |
+| `GET` | `/stock/quote/:symbol` | — | 获取单只股票行情 |
+| `GET` | `/stock/batch` | — | 批量获取股票行情 |
+| `GET` | `/stock/watchlist` | ✅ | 获取自选股列表 |
+| `POST` | `/stock/watchlist` | ✅ | 添加自选股 |
+| `DELETE` | `/stock/watchlist/:symbol` | ✅ | 移除自选股 |
+| `GET` | `/stock/history/:symbol` | — | 获取历史 K 线数据（支持 period 参数：day/week/month/3month/6month） |
 
 ### 图片生成 — `/image`
 

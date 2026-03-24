@@ -143,7 +143,7 @@ module.exports = (io, socket, userSocketMap) => {
       if (botMember) {
         const botId = botMember._id.toString();
         
-        // Handle image generation request (imageUrl present but text indicates generation)
+        // Handle image generation result from bot (imageUrl present but text indicates generation)
         if (imageUrl && text?.includes("✨ 已为您生成图片")) {
           // Save bot's image message
           const botMessage = await Message.create({
@@ -178,6 +178,24 @@ module.exports = (io, socket, userSocketMap) => {
           await conversation.save();
           
           io.to(conversationId).emit("receive-message", botMessage);
+          return;
+        }
+        
+        // Handle user's image generation request - just save the message, skip AI response
+        // The actual image generation is handled by the frontend API call
+        if (text?.startsWith("🎨 生成图片：")) {
+          const userMessage = await Message.create({
+            conversationId,
+            senderId,
+            text,
+          });
+          
+          await userMessage.populate('senderId', 'name profilePic');
+          
+          conversation.latestmessage = text;
+          await conversation.save();
+          
+          io.to(conversationId).emit("receive-message", userMessage);
           return;
         }
         

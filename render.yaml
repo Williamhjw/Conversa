@@ -43,7 +43,3 @@ services:
     envVars:
       - key: VITE_API_URL
         value: ""
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
