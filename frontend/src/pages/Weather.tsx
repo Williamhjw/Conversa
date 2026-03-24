@@ -411,44 +411,48 @@ export default function Weather() {
                             </div>
 
                             {/* Right Column - AI Suggestions */}
-                            <div className="space-y-4">
-                                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
-                                    <div className="h-1 bg-linear-to-r from-purple-500 to-pink-500" />
-                                    <CardContent className="p-4">
-                                        <div className="flex items-center gap-2 mb-3">
+                            <div className="space-y-4 lg:max-h-[calc(100vh-140px)] lg:overflow-hidden">
+                                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden flex flex-col lg:max-h-[calc(50vh-80px)]">
+                                    <div className="h-1 bg-linear-to-r from-purple-500 to-pink-500 flex-shrink-0" />
+                                    <CardContent className="p-4 flex flex-col min-h-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-3 flex-shrink-0">
                                             <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                                                 <Shirt className="size-4 text-purple-600 dark:text-purple-400" />
                                             </div>
                                             <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">穿衣建议</h3>
                                         </div>
-                                        {suggestionLoading ? (
-                                            <div className="flex items-center gap-2 py-2">
-                                                <Loader2 className="size-4 animate-spin text-slate-400" />
-                                                <span className="text-sm text-slate-500">AI 正在分析...</span>
-                                            </div>
-                                        ) : (
-                                            formatSuggestion(suggestion?.clothing || "")
-                                        )}
+                                        <div className="flex-1 overflow-y-auto min-h-0 thin-scrollbar">
+                                            {suggestionLoading ? (
+                                                <div className="flex items-center gap-2 py-2">
+                                                    <Loader2 className="size-4 animate-spin text-slate-400" />
+                                                    <span className="text-sm text-slate-500">AI 正在分析...</span>
+                                                </div>
+                                            ) : (
+                                                formatSuggestion(suggestion?.clothing || "")
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
 
-                                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
-                                    <div className="h-1 bg-linear-to-r from-emerald-500 to-teal-500" />
-                                    <CardContent className="p-4">
-                                        <div className="flex items-center gap-2 mb-3">
+                                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden flex flex-col lg:max-h-[calc(50vh-80px)]">
+                                    <div className="h-1 bg-linear-to-r from-emerald-500 to-teal-500 flex-shrink-0" />
+                                    <CardContent className="p-4 flex flex-col min-h-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-3 flex-shrink-0">
                                             <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                                                 <Car className="size-4 text-emerald-600 dark:text-emerald-400" />
                                             </div>
                                             <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">出行提醒</h3>
                                         </div>
-                                        {suggestionLoading ? (
-                                            <div className="flex items-center gap-2 py-2">
-                                                <Loader2 className="size-4 animate-spin text-slate-400" />
-                                                <span className="text-sm text-slate-500">AI 正在分析...</span>
-                                            </div>
-                                        ) : (
-                                            formatSuggestion(suggestion?.travel || "")
-                                        )}
+                                        <div className="flex-1 overflow-y-auto min-h-0 thin-scrollbar">
+                                            {suggestionLoading ? (
+                                                <div className="flex items-center gap-2 py-2">
+                                                    <Loader2 className="size-4 animate-spin text-slate-400" />
+                                                    <span className="text-sm text-slate-500">AI 正在分析...</span>
+                                                </div>
+                                            ) : (
+                                                formatSuggestion(suggestion?.travel || "")
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>

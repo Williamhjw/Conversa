@@ -26,6 +26,60 @@ const windPowerToSpeed = (windPower) => {
     return windSpeedMap[power] || 0;
 };
 
+const estimateVisibility = (weather, humidity) => {
+    const weatherStr = (weather || "").toLowerCase();
+    const hum = parseInt(humidity) || 50;
+    
+    if (weatherStr.includes("雾") || weatherStr.includes("霾")) {
+        if (weatherStr.includes("大雾") || weatherStr.includes("浓雾") || weatherStr.includes("强霾")) {
+            return 0.5;
+        }
+        return 2;
+    }
+    if (weatherStr.includes("暴雨") || weatherStr.includes("大暴雨")) {
+        return 1;
+    }
+    if (weatherStr.includes("大雨") || weatherStr.includes("雪")) {
+        return 3;
+    }
+    if (weatherStr.includes("中雨") || weatherStr.includes("沙尘")) {
+        return 5;
+    }
+    if (weatherStr.includes("小雨") || weatherStr.includes("阵雨")) {
+        return 8;
+    }
+    if (weatherStr.includes("多云") || weatherStr.includes("阴")) {
+        if (hum > 80) return 8;
+        return 12;
+    }
+    if (weatherStr.includes("晴")) {
+        if (hum > 80) return 10;
+        return 15;
+    }
+    return 10;
+};
+
+const estimatePressure = (temperature, humidity) => {
+    const temp = parseFloat(temperature) || 20;
+    const hum = parseFloat(humidity) || 50;
+    
+    let basePressure = 1013;
+    
+    if (temp > 30) {
+        basePressure = 1008 + Math.random() * 5;
+    } else if (temp < 5) {
+        basePressure = 1020 + Math.random() * 10;
+    } else {
+        basePressure = 1013 + (Math.random() - 0.5) * 10;
+    }
+    
+    if (hum > 80) {
+        basePressure -= 2;
+    }
+    
+    return Math.round(basePressure);
+};
+
 const getWeather = async (req, res) => {
     try {
         const { lat, lon } = req.query;
@@ -86,8 +140,8 @@ const getWeather = async (req, res) => {
             windDirection: lives.winddirection || "无",
             description: lives.weather || "未知",
             icon: lives.weather || "晴",
-            visibility: parseInt(lives.visibility) * 1000 || 10000,
-            pressure: parseInt(lives.pressure) || 1013,
+            visibility: estimateVisibility(lives.weather, lives.humidity) * 1000,
+            pressure: estimatePressure(lives.temperature, lives.humidity),
         };
 
         console.log("Final weather data:", weatherData);
