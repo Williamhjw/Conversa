@@ -7,7 +7,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { emitSendMessage, emitTyping, emitStopTyping } from "@/lib/socket"
