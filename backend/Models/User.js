@@ -70,6 +70,22 @@ const Userschema = new mongoose.Schema(
         ref: "Conversation",
       },
     ],
+    watchlist: [
+      {
+        symbol: {
+          type: String,
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     isDeleted: {
       type: Boolean,
       default: false,

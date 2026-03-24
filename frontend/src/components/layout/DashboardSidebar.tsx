@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Bot, Gamepad2, LogOut, MessagesSquare, Settings, Star, Sun } from "lucide-react"
+import { Bot, Gamepad2, LogOut, MessagesSquare, Settings, Star, Sun, TrendingUp } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -43,6 +43,12 @@ const NAV_ITEMS = [
         href: "/user/weather",
         icon: Sun,
         tooltip: "天气",
+    },
+    {
+        label: "股票",
+        href: "/user/stock",
+        icon: TrendingUp,
+        tooltip: "股票",
     },
 ]
 

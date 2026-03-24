@@ -68,6 +68,7 @@ app.use("/group", require("./Routes/group-routes.js"));
 app.use("/leetcode", require("./Routes/leetcode-routes.js"));
 app.use("/weather", require("./Routes/weather-routes.js"));
 app.use("/image", require("./Routes/image-routes.js"));
+app.use("/stock", require("./Routes/stock-routes.js"));
 
 app.post("/upload", require("./middleware/fetchUser.js"), upload.single("image"), (req, res) => {
   if (!req.file) {
