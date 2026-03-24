@@ -224,7 +224,7 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
             }
 
             const { url } = await uploadRes.json()
-            const imageUrl = `${API_BASE}${url}`
+            const imageUrl = url
             const trimmedCaption = caption.trim()
             emitSendMessage({ conversationId, imageUrl, ...(trimmedCaption && { text: trimmedCaption }), replyTo: replyToMessage?._id ?? null })
             onCancelReply?.()

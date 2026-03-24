@@ -5,7 +5,7 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5500;
 const { initSocket } = require("./socket/index.js");
 const { startStaleOnlineUsersJob } = require("./jobs/staleOnlineUsers.js");
 const { CORS_ORIGIN } = require("./secrets.js");
@@ -54,7 +54,16 @@ app.use(cors({
 }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
-app.use("/uploads", express.static(uploadsDir));
+
+// Static files with CORS enabled
+app.use("/uploads", cors({
+  origin: CORS_ORIGIN === "*" ? "*" : CORS_ORIGIN.split(",").map(s => s.trim()),
+  credentials: true,
+}), express.static(uploadsDir, {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
 
 // Routes
 app.get("/", (req, res) => {
@@ -74,7 +83,11 @@ app.post("/upload", require("./middleware/fetchUser.js"), upload.single("image")
   if (!req.file) {
     return res.status(400).json({ error: "没有上传文件" });
   }
-  const fileUrl = `/uploads/${req.user.id}/${req.file.filename}`;
+  // Return full URL for consistency with avatar upload
+  const protocol = req.protocol;
+  const host = req.get("host");
+  const serverUrl = `${protocol}://${host}`;
+  const fileUrl = `${serverUrl}/uploads/${req.user.id}/${req.file.filename}`;
   res.json({ url: fileUrl, filename: req.file.filename });
 });
 
@@ -107,9 +120,12 @@ const start = async () => {
   }
   
   // Always start server, even if database connection fails
-  server.listen(PORT, "0.0.0.0", () => {
+  // 局域网访问使用 0.0.0.0，本地开发使用 127.0.0.1
+  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '0.0.0.0';
+  server.listen(PORT, HOST, () => {
     console.log(`🚀 Server started at http://localhost:${PORT}`);
-    console.log(`📡 Listening on 0.0.0.0:${PORT}`);
+    console.log(`📡 Listening on ${HOST}:${PORT}`);
+    console.log(`📱 局域网访问: http://192.168.3.51:${PORT}`);
   });
 };
 

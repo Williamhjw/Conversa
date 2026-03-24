@@ -92,14 +92,14 @@ export const authApi = {
     login: (payload: LoginPayload) =>
         fetch(`${API_BASE}/auth/login`, {
             method: "POST",
-            headers: headers(),
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         }).then((res) => handleResponse<AuthTokenResponse>(res)),
 
     register: (payload: RegisterPayload) =>
         fetch(`${API_BASE}/auth/register`, {
             method: "POST",
-            headers: headers(),
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         }).then((res) => handleResponse<AuthTokenResponse>(res)),
 
@@ -111,7 +111,7 @@ export const authApi = {
     sendOtp: (email: string) =>
         fetch(`${API_BASE}/auth/getotp`, {
             method: "POST",
-            headers: headers(),
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
         }).then(handleResponse),
 

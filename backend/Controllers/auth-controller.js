@@ -49,6 +49,14 @@ const register = async (req, res) => {
       });
     }
 
+    // Check and clean up any orphaned bot user from previous incomplete registration
+    const botEmail = email + "bot";
+    const existingBot = await User.findOne({ email: botEmail });
+    if (existingBot) {
+      console.log(`Cleaning up orphaned bot user: ${botEmail}`);
+      await User.findByIdAndDelete(existingBot._id);
+    }
+
     var imageUrl = `https://ui-avatars.com/api/?name=${name}&background=random&bold=true`;
 
     const salt = await bcrypt.genSalt(10);
