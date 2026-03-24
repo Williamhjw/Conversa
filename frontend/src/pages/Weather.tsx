@@ -3,6 +3,8 @@ import { Car, Droplets, Loader2, MapPin, RefreshCw, Shirt, Sun, Thermometer, Umb
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { API_BASE } from "@/lib/api"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface WeatherData {
     location: string
@@ -90,50 +92,14 @@ const getWeatherIcon = (description: string): string => {
     return "🌤️";
 }
 
-// Format suggestion text by removing markdown and structuring content
 const formatSuggestion = (text: string): React.ReactElement => {
     if (!text) return <p className="text-sm text-slate-400">暂无建议</p>;
 
-    // Remove markdown bold syntax
-    const cleanText = text.replace(/\*\*/g, "");
-
-    // Split by double newlines to get sections
-    const sections = cleanText.split("\n\n").filter(Boolean);
-
     return (
-        <div className="space-y-3">
-            {sections.map((section, index) => {
-                const lines = section.split("\n").filter(Boolean);
-                if (lines.length === 0) return null;
-
-                // Check if first line is a title (ends with : or ：)
-                const firstLine = lines[0];
-                const isTitle = firstLine.match(/[:：]$/);
-
-                if (isTitle && lines.length > 1) {
-                    return (
-                        <div key={index} className="border-l-2 border-purple-300 dark:border-purple-700 pl-3">
-                            <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-1">
-                                {firstLine.replace(/[:：]$/, "")}
-                            </h4>
-                            <div className="space-y-1">
-                                {lines.slice(1).map((line, i) => (
-                                    <p key={i} className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                        {line.replace(/^[-•]\s*/, "")}
-                                    </p>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                }
-
-                // Regular paragraph
-                return (
-                    <p key={index} className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                        {firstLine}
-                    </p>
-                );
-            })}
+        <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-slate-800 dark:prose-headings:text-slate-200 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-3 prose-h2:mb-2 prose-p:text-slate-600 dark:prose-p:text-slate-300 prose-p:leading-relaxed prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {text}
+            </ReactMarkdown>
         </div>
     );
 }
