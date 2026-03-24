@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: conversa-backend
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    rootDir: .
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB_NAME
+        value: conversa
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: FRONTEND_URL
+        value: https://conversa-frontend.onrender.com
+      - key: GLM_API_KEY
+        sync: false
+      - key: AMAP_API_KEY
+        sync: false
+      - key: EMAIL
+        sync: false
+      - key: PASSWORD
+        sync: false
+
+  - type: web
+    name: conversa-frontend
+    runtime: static
+    region: singapore
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    rootDir: .
+    envVars:
+      - key: VITE_API_URL
+        value: ""
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -7,7 +7,7 @@
 import { io } from "socket.io-client";
 
 const SOCKET_URL: string =
-    import.meta.env.VITE_API_URL ?? "http://localhost:5500";
+    import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5500" : window.location.origin);
 
 const socket = io(SOCKET_URL, {
     autoConnect: false,
