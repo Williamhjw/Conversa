@@ -408,19 +408,19 @@ export default function MessageInput({ conversationId, myId, receiverId, receive
                         autoFocus
                     />
 
-                    <DialogFooter className="flex items-center gap-2">
-                        <Button variant="outline" onClick={closeImageDialog} disabled={uploading}>
+                    <div className="flex flex-row justify-end gap-2">
+                        <Button variant="outline" onClick={closeImageDialog} disabled={uploading} className="flex-1 sm:flex-none">
                             取消
                         </Button>
                         <Button
-                            className="bg-primary hover:bg-primary/90 text-white"
+                            className="bg-primary hover:bg-primary/90 text-white flex-1 sm:flex-none"
                             onClick={handleSendImage}
                             disabled={uploading}
                         >
                             {uploading ? <Spinner className="size-4 mr-1" /> : ""}
                             {uploading ? "发送中…" : "发送"}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </>
