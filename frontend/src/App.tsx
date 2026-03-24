@@ -18,6 +18,7 @@ import SnakeGame from "./pages/SnakeGame";
 import LeetCode from "./pages/LeetCode";
 import Weather from "./pages/Weather";
 import Stock from "./pages/Stock";
+import NotFound from "./pages/NotFound";
 
 export function App() {
 
@@ -54,6 +55,7 @@ export function App() {
           </Route>
         </Route>
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
