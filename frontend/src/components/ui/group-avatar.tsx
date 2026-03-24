@@ -42,7 +42,6 @@ export function GroupAvatar({ members, size = 40 }: GroupAvatarProps) {
     const grid = getGridConfig(count)
     const gap = 2
     const totalGapH = (grid.cols - 1) * gap
-    const totalGapV = (grid.rows - 1) * gap
     const avatarSize = (size - totalGapH) / grid.cols
 
     return (

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"
-import { ArrowLeft, Gamepad2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Gamepad2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const GAMES = [
