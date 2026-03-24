@@ -139,10 +139,24 @@ const formatSuggestion = (text: string): React.ReactElement => {
 }
 
 const fetchLocationByIP = async (): Promise<{ lat: number; lon: number }> => {
-    const res = await fetch("http://ip-api.com/json/?fields=lat,lon")
-    const data = await res.json()
-    if (data.lat && data.lon) {
-        return { lat: data.lat, lon: data.lon }
+    // 使用 HTTPS 的 IP 定位服务
+    try {
+        const res = await fetch("https://ipapi.co/json/")
+        const data = await res.json()
+        if (data.latitude && data.longitude) {
+            return { lat: data.latitude, lon: data.longitude }
+        }
+    } catch {
+        // 备用方案
+        try {
+            const res = await fetch("https://geolocation-db.com/json/")
+            const data = await res.json()
+            if (data.latitude && data.longitude) {
+                return { lat: data.latitude, lon: data.longitude }
+            }
+        } catch {
+            // 忽略错误
+        }
     }
     throw new Error("IP定位失败")
 }
@@ -196,33 +210,52 @@ export default function Weather() {
     }, [])
 
     const handleRefresh = useCallback(() => {
-        const getLocation = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        setLocationMethod("gps")
-                        fetchWeather(position.coords.latitude, position.coords.longitude)
-                    },
-                    async () => {
-                        try {
-                            setLocationMethod("ip")
-                            const ipLocation = await fetchLocationByIP()
-                            fetchWeather(ipLocation.lat, ipLocation.lon)
-                        } catch {
-                            setError("无法获取位置信息，请允许位置访问权限或检查网络")
-                            setLoading(false)
-                        }
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0,
-                    }
-                )
-            } else {
-                setError("您的浏览器不支持地理位置功能")
+        // IP 定位备用方案
+        const useIPFallback = async () => {
+            try {
+                setLocationMethod("ip")
+                const ipLocation = await fetchLocationByIP()
+                fetchWeather(ipLocation.lat, ipLocation.lon)
+            } catch {
+                setError("无法获取位置信息，请检查网络连接")
                 setLoading(false)
             }
+        }
+
+        const getLocation = () => {
+            // 检查是否支持地理位置 API
+            if (!navigator.geolocation) {
+                console.log("浏览器不支持地理位置 API，使用 IP 定位")
+                useIPFallback()
+                return
+            }
+
+            // 检查是否是 HTTPS（地理位置 API 需要 HTTPS）
+            const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+            
+            if (!isHTTPS) {
+                console.log("非 HTTPS 环境，使用 IP 定位")
+                useIPFallback()
+                return
+            }
+
+            // 尝试 GPS 定位
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log("GPS 定位成功")
+                    setLocationMethod("gps")
+                    fetchWeather(position.coords.latitude, position.coords.longitude)
+                },
+                (error) => {
+                    console.log("GPS 定位失败:", error.message)
+                    useIPFallback()
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                }
+            )
         }
 
         getLocation()
