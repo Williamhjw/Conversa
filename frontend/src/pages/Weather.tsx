@@ -22,31 +22,71 @@ interface AISuggestion {
 }
 
 const WEATHER_ICONS: Record<string, string> = {
+    // 晴
     "晴": "☀️",
+    "晴间多云": "🌤️",
+    "晴转多云": "🌤️",
+    "多云转晴": "🌤️",
+    // 多云
     "多云": "⛅",
     "阴": "☁️",
+    "阴天": "☁️",
+    "阴转多云": "☁️",
+    "多云转阴": "☁️",
+    // 雨
+    "阵雨": "🌦️",
+    "雷阵雨": "⛈️",
     "小雨": "🌧️",
     "中雨": "🌧️",
     "大雨": "🌧️",
     "暴雨": "⛈️",
-    "雷阵雨": "⛈️",
+    "大暴雨": "⛈️",
+    "特大暴雨": "⛈️",
+    "冻雨": "🌨️",
+    // 雪
     "小雪": "❄️",
     "中雪": "❄️",
     "大雪": "❄️",
     "暴雪": "❄️",
+    "雨夹雪": "🌨️",
+    // 雾/霾
     "雾": "🌫️",
-    "霾": "🌫️",
-    "沙尘暴": "🌪️",
+    "大雾": "🌫️",
+    "霾": "😷",
+    "轻度霾": "😷",
+    "中度霾": "😷",
+    "重度霾": "😷",
+    // 沙尘
+    "沙尘暴": "�️",
+    "强沙尘暴": "🌪️",
     "浮尘": "🌫️",
     "扬沙": "🌫️",
+    // 其他
+    "冰雹": "🧊",
+    "龙卷风": "🌪️",
 }
 
 const getWeatherIcon = (description: string): string => {
+    // 精确匹配优先
+    if (WEATHER_ICONS[description]) {
+        return WEATHER_ICONS[description];
+    }
+    
+    // 部分匹配
     for (const [key, icon] of Object.entries(WEATHER_ICONS)) {
         if (description.includes(key)) {
             return icon;
         }
     }
+    
+    // 关键词匹配
+    if (description.includes("晴")) return "☀️";
+    if (description.includes("雨")) return "🌧️";
+    if (description.includes("雪")) return "❄️";
+    if (description.includes("云")) return "☁️";
+    if (description.includes("雾") || description.includes("霾")) return "🌫️";
+    if (description.includes("沙") || description.includes("尘")) return "🌫️";
+    
     return "🌤️";
 }
 
