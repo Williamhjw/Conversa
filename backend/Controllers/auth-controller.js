@@ -5,18 +5,48 @@ const User = require("../Models/User.js");
 const Conversation = require("../Models/Conversation.js");
 const { JWT_SECRET, EMAIL, PASSWORD } = require("../secrets.js");
 
-let mailTransporter = nodemailer.createTransport({
-  host: 'smtp.qq.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: EMAIL,
-    pass: PASSWORD,
-  },
-  connectionTimeout: 120000,
-  greetingTimeout: 120000,
-  socketTimeout: 120000
-});
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.qq.com";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT) || 465;
+const SMTP_SECURE = process.env.SMTP_SECURE !== "false";
+
+let mailTransporter = null;
+
+const initMailTransporter = () => {
+  if (!EMAIL || !PASSWORD) {
+    console.log("⚠️ EMAIL or PASSWORD not configured, email features disabled");
+    return null;
+  }
+  
+  try {
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_SECURE,
+      auth: {
+        user: EMAIL,
+        pass: PASSWORD,
+      },
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000
+    });
+    
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error("❌ SMTP connection error:", error.message);
+      } else {
+        console.log(`✅ SMTP connected: ${SMTP_HOST}:${SMTP_PORT}`);
+      }
+    });
+    
+    return transporter;
+  } catch (error) {
+    console.error("❌ Failed to create mail transporter:", error.message);
+    return null;
+  }
+};
+
+mailTransporter = initMailTransporter();
 
 
 const register = async (req, res) => {
@@ -42,11 +72,35 @@ const register = async (req, res) => {
       });
     }
 
+    // Check for existing user with exact email
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    
+    // If user exists and is NOT deleted, reject registration
+    if (existingUser && !existingUser.isDeleted) {
       return res.status(400).json({
-        error: "User already exists",
+        error: "该邮箱已被注册",
       });
+    }
+    
+    // If user exists but IS deleted, clean up and allow re-registration
+    if (existingUser && existingUser.isDeleted) {
+      console.log(`Cleaning up deleted user account: ${email}`);
+      const botEmail = email + "bot";
+      await User.deleteOne({ email: botEmail });
+      await User.findByIdAndDelete(existingUser._id);
+    }
+    
+    // Check for deleted user with modified email (email format: deleted-xxx-original@email.com)
+    const deletedUserPattern = new RegExp(`^deleted-.*-${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+    const deletedUser = await User.findOne({ email: deletedUserPattern });
+    
+    // Clean up deleted user and bot if found
+    if (deletedUser) {
+      console.log(`Found deleted user with email pattern: ${deletedUser.email}`);
+      const botEmail = email + "bot";
+      await User.deleteOne({ email: botEmail });
+      await User.findByIdAndDelete(deletedUser._id);
+      console.log(`Cleaned up deleted user: ${email}`);
     }
 
     // Check and clean up any orphaned bot user from previous incomplete registration
@@ -69,6 +123,7 @@ const register = async (req, res) => {
       password: secPass,
       profilePic: imageUrl,
       about: "Hello World!!",
+      isEmailVerified: true, // 自动验证邮箱，跳过邮件验证
     });
 
     // Write 2: create the dedicated bot user for this account.
@@ -158,6 +213,12 @@ const login = async (req, res) => {
       });
     }
 
+    if (user.isDeleted) {
+      return res.status(400).json({
+        error: "该账户已被注销，请重新注册",
+      });
+    }
+
     if (otp) {
       const isValidOtp = await bcrypt.compare(otp.toString(), user.otp.toString());
       if (!isValidOtp) {
@@ -222,6 +283,11 @@ const sendotp = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         error: "User not found",
+      });
+    }
+    if (user.isDeleted) {
+      return res.status(400).json({
+        error: "该账户已被注销，请重新注册",
       });
     }
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -315,13 +381,25 @@ const sendotp = async (req, res) => {
   </html>`,
     };
 
+    // Check if mail transporter is available
+    if (!mailTransporter) {
+      console.error("Mail transporter not initialized");
+      return res.status(500).json({ 
+        message: "邮件服务未配置，请联系管理员",
+        error: "MAIL_NOT_CONFIGURED"
+      });
+    }
+
     // Use promise-based approach
     try {
       await mailTransporter.sendMail(mailDetails);
       return res.status(200).json({ message: "OTP sent" });
     } catch (err) {
-      console.error("Mail error:", err);
-      return res.status(500).json({ message: "Failed to send OTP" });
+      console.error("Mail error:", err.message);
+      return res.status(500).json({ 
+        message: "邮件发送失败，请检查邮箱配置或稍后重试",
+        error: err.message 
+      });
     }
   } catch (error) {
     console.error(error.message);
@@ -411,12 +489,24 @@ const sendVerificationOtp = async (req, res) => {
 </html>`,
     };
 
+    // Check if mail transporter is available
+    if (!mailTransporter) {
+      console.error("Mail transporter not initialized");
+      return res.status(500).json({ 
+        message: "邮件服务未配置，请联系管理员",
+        error: "MAIL_NOT_CONFIGURED"
+      });
+    }
+
     try {
       await mailTransporter.sendMail(mailDetails);
       return res.status(200).json({ message: "Verification OTP sent" });
     } catch (err) {
-      console.error("Mail error:", err);
-      return res.status(500).json({ message: "Failed to send OTP" });
+      console.error("Mail error:", err.message);
+      return res.status(500).json({ 
+        message: "邮件发送失败，请检查邮箱配置或稍后重试",
+        error: err.message 
+      });
     }
   } catch (error) {
     console.error(error.message);
