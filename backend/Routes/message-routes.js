@@ -2,20 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  allMessage,
+  getMessages,
   deleteMessage,
-  bulkHide,
+  bulkHideMessages,
   clearChat,
   toggleStar,
   getStarredMessages,
-  translateMessage,
+  translate,
 } = require("../Controllers/message-controller.js");
 const fetchuser = require("../middleware/fetchUser.js");
 
-router.post("/translate", fetchuser, translateMessage);
+router.post("/translate", fetchuser, translate);
 router.get("/starred", fetchuser, getStarredMessages);
-router.get("/:id", fetchuser, allMessage);
-router.delete("/bulk/hide", fetchuser, bulkHide);
+router.get("/:id", fetchuser, getMessages);
+router.delete("/bulk/hide", fetchuser, bulkHideMessages);
 router.delete("/:id", fetchuser, deleteMessage);
 router.post("/clear/:conversationId", fetchuser, clearChat);
 router.post("/:id/star", fetchuser, toggleStar);

@@ -2,17 +2,17 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  createConversation,
   getConversation,
-  getConversationList,
+  getConversationById,
+  getConversations,
   togglePin,
   deleteConversation,
 } = require("../Controllers/conversation-controller.js");
 const fetchuser = require("../middleware/fetchUser.js");
 
-router.post("/", fetchuser, createConversation);
-router.get("/", fetchuser, getConversationList);
-router.get("/:id", fetchuser, getConversation);
+router.post("/", fetchuser, getConversation);
+router.get("/", fetchuser, getConversations);
+router.get("/:id", fetchuser, getConversationById);
 router.post("/:id/pin", fetchuser, togglePin);
 router.delete("/:id", fetchuser, deleteConversation);
 

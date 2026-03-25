@@ -3,7 +3,7 @@ const User = require("../Models/User.js");
 const Message = require("../Models/Message.js");
 const {
   streamAiResponse,
-  sendMessageHandler,
+  sendMessage,
   deleteMessageHandler,
 } = require("../Controllers/message-controller.js");
 const sendMessageEmail = require("../utils/sendMessageEmail.js");
@@ -370,7 +370,7 @@ module.exports = (io, socket, userSocketMap) => {
         }
       }
 
-      const message = await sendMessageHandler({
+      const message = await sendMessage({
         text,
         imageUrl,
         senderId,

@@ -1,144 +1,81 @@
-const crypto = require("crypto");
-const bcrypt = require("bcryptjs");
-const path = require("path");
-const fs = require("fs");
-const User = require("../Models/User.js");
-const Conversation = require("../Models/Conversation.js");
-const { FRONTEND_URL } = require("../secrets.js");
+const {
+  getOnlineStatus,
+  blockUser,
+  unblockUser,
+  getBlockStatus,
+  getNonFriendsList,
+  updateProfile,
+  updateAvatar,
+  deleteAccount,
+  checkDuplicateUsers,
+} = require("../Services/user-service.js");
 
-const getOnlineStatus = async (req, res) => {
+const getOnlineStatusHandler = async (req, res) => {
   const userId = req.params.id;
   const requesterId = req.user.id;
   try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const result = await getOnlineStatus(userId, requesterId);
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
     }
-    // If this user has blocked the requester, return offline (sanitized)
-    const isBlocked = user.blockedUsers?.some(
-      (id) => id.toString() === requesterId
-    );
-    res.status(200).json({ isOnline: isBlocked ? false : user.isOnline });
+    res.status(200).json(result);
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
 };
 
-const blockUser = async (req, res) => {
+const blockUserHandler = async (req, res) => {
   const targetId = req.params.id;
   const myId = req.user.id;
-  if (targetId === myId) return res.status(400).json({ error: "Cannot block yourself" });
   try {
-    await User.findByIdAndUpdate(myId, {
-      $addToSet: { blockedUsers: targetId },
-    });
-    res.status(200).json({ message: "User blocked" });
+    const result = await blockUser(myId, targetId);
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-const unblockUser = async (req, res) => {
+const unblockUserHandler = async (req, res) => {
   const targetId = req.params.id;
   const myId = req.user.id;
   try {
-    await User.findByIdAndUpdate(myId, {
-      $pull: { blockedUsers: targetId },
-    });
-    res.status(200).json({ message: "User unblocked" });
+    const result = await unblockUser(myId, targetId);
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-const getBlockStatus = async (req, res) => {
+const getBlockStatusHandler = async (req, res) => {
   const targetId = req.params.id;
   const myId = req.user.id;
   try {
-    const [me, them] = await Promise.all([
-      User.findById(myId, "blockedUsers"),
-      User.findById(targetId, "blockedUsers"),
-    ]);
-    if (!them) return res.status(404).json({ error: "User not found" });
-    const iBlockedThem = me.blockedUsers.some(
-      (id) => id.toString() === targetId
-    );
-    const theyBlockedMe = them.blockedUsers.some(
-      (id) => id.toString() === myId
-    );
-    res.status(200).json({ iBlockedThem, theyBlockedMe });
+    const result = await getBlockStatus(myId, targetId);
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-const PINNED_EMAIL = "pmsoni2016@gmail.com";
-
-const getNonFriendsList = async (req, res) => {
+const getNonFriendsListHandler = async (req, res) => {
   try {
     const search = (req.query.search || "").trim();
     const sort = req.query.sort || "name_asc";
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip = (page - 1) * limit;
 
-    const excludedIds = [req.user.id];
-
-    const baseFilter = {
-      _id: { $nin: excludedIds },
-      email: { $not: /bot$/ },
-      isDeleted: { $ne: true },
-    };
-
-    if (search) {
-      baseFilter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const sortMap = {
-      name_asc: { name: 1 },
-      name_desc: { name: -1 },
-      last_seen_recent: { lastSeen: -1 },
-      last_seen_oldest: { lastSeen: 1 },
-    };
-    const mongoSort = sortMap[sort] || sortMap.name_asc;
-
-    let pinnedUser = null;
-    if (!search) {
-      pinnedUser = await User.findOne({
-        ...baseFilter,
-        email: PINNED_EMAIL,
-      }).select("-password");
-    }
-
-    const mainFilter = pinnedUser
-      ? { ...baseFilter, _id: { $nin: [...excludedIds, pinnedUser._id] } }
-      : baseFilter;
-
-    const effectiveLimit = (pinnedUser && page === 1) ? limit - 1 : limit;
-    const effectiveSkip = (pinnedUser && page > 1) ? skip - 1 : skip;
-
-    const [users, total] = await Promise.all([
-      User.find(mainFilter).sort(mongoSort).skip(Math.max(0, effectiveSkip)).limit(effectiveLimit).select("-password"),
-      User.countDocuments(mainFilter),
-    ]);
-
-    const grandTotal = total + (pinnedUser ? 1 : 0);
-    const hasMore = skip + limit < grandTotal;
-
-    res.json({
-      users,
-      pinnedUser: page === 1 ? pinnedUser : null,
-      hasMore,
-      total: grandTotal,
-      page,
-    });
+    const result = await getNonFriendsList(req.user.id, { search, sort, page, limit });
+    res.json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -147,37 +84,11 @@ const getNonFriendsList = async (req, res) => {
 
 const updateprofile = async (req, res) => {
   try {
-    const dbuser = await User.findById(req.user.id);
-    const allowedUpdates = {
-      name: req.body.name,
-      about: req.body.about,
-      profilePic: req.body.profilePic,
-      emailNotificationsEnabled: req.body.emailNotificationsEnabled,
-    };
-
-    if (req.body.newpassword) {
-      const passwordCompare = await bcrypt.compare(
-        req.body.oldpassword,
-        dbuser.password
-      );
-      if (!passwordCompare) {
-        return res.status(400).json({
-          error: "Invalid Credentials",
-        });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      const secPass = await bcrypt.hash(req.body.newpassword, salt);
-      allowedUpdates.password = secPass;
+    const result = await updateProfile(req.user.id, req.body);
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
     }
-
-    // Remove undefined keys
-    Object.keys(allowedUpdates).forEach(
-      (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key]
-    );
-
-    await User.findByIdAndUpdate(req.user.id, allowedUpdates);
-    res.status(200).json({ message: "Profile Updated" });
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: "服务器内部错误，请稍后重试" });
   }
@@ -189,92 +100,45 @@ const uploadAvatar = async (req, res) => {
       return res.status(400).json({ error: "没有上传文件" });
     }
 
-    // Get the protocol and host from the request for dynamic URL construction
-    const protocol = req.protocol;
-    const host = req.get("host");
-    const serverUrl = `${protocol}://${host}`;
-    const fileUrl = `${serverUrl}/uploads/${req.user.id}/${req.file.filename}`;
-    
-    // Update user's profilePic in database
-    await User.findByIdAndUpdate(req.user.id, { profilePic: fileUrl });
-
-    res.json({ url: fileUrl, message: "头像上传成功" });
+    const result = await updateAvatar(req.user.id, req.file, req.protocol, req.get("host"));
+    res.json(result);
   } catch (error) {
     console.error("Avatar upload error:", error);
     res.status(500).json({ error: "头像上传失败" });
   }
 };
 
-const deleteAccount = async (req, res) => {
+const deleteAccountHandler = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const anonymisedEmail = `deleted-${crypto.randomUUID()}-${user.email}`;
-
-    await User.findByIdAndUpdate(userId, {
-      isDeleted: true,
-      name: "Deleted Conversa User",
-      about: "",
-      email: anonymisedEmail,
-      profilePic: "https://ui-avatars.com/api/?name=Deleted+User&background=808080&color=ffffff&bold=true",
-      password: "",
-      otp: "",
-      otpExpiry: null,
-      lastSeen: null
-    });
-
-    res.status(200).json({ message: "Account deleted" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-const checkDuplicateUsers = async (req, res) => {
-  try {
-    const allUsers = await User.find({}).select("name email isBot isDeleted createdAt");
-    
-    const nameCounts = {};
-    allUsers.forEach((u) => {
-      const key = u.name;
-      if (!nameCounts[key]) nameCounts[key] = [];
-      nameCounts[key].push(u);
-    });
-
-    const duplicates = [];
-    for (const [name, users] of Object.entries(nameCounts)) {
-      if (users.length > 1 && !users[0].isBot) {
-        duplicates.push({
-          name,
-          count: users.length,
-          users: users.map((u) => ({
-            id: u._id,
-            email: u.email,
-            isBot: u.isBot || false,
-            isDeleted: u.isDeleted || false,
-            createdAt: u.createdAt
-          }))
-        });
-      }
+    const result = await deleteAccount(req.user.id);
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
     }
-
-    res.json({
-      total: allUsers.length,
-      duplicates,
-      allUsers: allUsers.map((u) => ({
-        id: u._id,
-        name: u.name,
-        email: u.email,
-        isBot: u.isBot || false,
-        isDeleted: u.isDeleted || false
-      }))
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-module.exports = { getOnlineStatus, getNonFriendsList, updateprofile, uploadAvatar, blockUser, unblockUser, getBlockStatus, deleteAccount, checkDuplicateUsers };
+const checkDuplicateUsersHandler = async (req, res) => {
+  try {
+    const result = await checkDuplicateUsers();
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+module.exports = {
+  getOnlineStatus: getOnlineStatusHandler,
+  getNonFriendsList: getNonFriendsListHandler,
+  updateprofile,
+  uploadAvatar,
+  blockUser: blockUserHandler,
+  unblockUser: unblockUserHandler,
+  getBlockStatus: getBlockStatusHandler,
+  deleteAccount: deleteAccountHandler,
+  checkDuplicateUsers: checkDuplicateUsersHandler,
+};
