@@ -1,27 +1,9 @@
 import { useAuth } from "./hooks/use-auth";
-import { Loader } from "lucide-react"
-import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import MainLayout from "./MainLayout";
-import SignUp from "./pages/SignUp";
-import Login from "./pages/Login";
-import DashboardLayout from "./components/layout/DashboardLayout";
-import Conversations from "./pages/Conversations";
-import ConversationDetail from "./pages/ConversationDetail";
-import User from "./pages/User";
-import ConversationLayout from "./components/layout/ConversationLayout";
-import UserProfile from "./pages/UserProfile";
-import StarredMessages from "./pages/StarredMessages";
-import VerifyEmail from "./pages/VerifyEmail";
-import Games from "./pages/Games";
-import SnakeGame from "./pages/SnakeGame";
-import LeetCode from "./pages/LeetCode";
-import Weather from "./pages/Weather";
-import Stock from "./pages/Stock";
-import NotFound from "./pages/NotFound";
+import { RouterProvider } from "react-router-dom";
+import { Loader } from "lucide-react";
+import { router } from "./router";
 
 export function App() {
-
   const { isUserLoading } = useAuth();
 
   if (isUserLoading) {
@@ -30,34 +12,10 @@ export function App() {
         <p className="text-lg">Please wait while we authenticate you</p>
         <Loader className="animate-spin" />
       </div>
-    )
+    );
   }
 
-  return (
-    <Routes>
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route element={<DashboardLayout />}>
-          <Route path="/user" element={<User />} />
-          <Route path="/user/profile" element={<UserProfile />} />
-          <Route path="/user/starred" element={<StarredMessages />} />
-          <Route path="/user/games" element={<Games />} />
-          <Route path="/user/games/snake" element={<SnakeGame />} />
-          <Route path="/user/games/leetcode" element={<LeetCode />} />
-          <Route path="/user/weather" element={<Weather />} />
-          <Route path="/user/stock" element={<Stock />} />
-          <Route element={<ConversationLayout />}>
-            <Route path="/user/conversations" element={<Conversations />} />
-            <Route path="/user/conversations/:id" element={<ConversationDetail />} />
-          </Route>
-        </Route>
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  )
+  return <RouterProvider router={router} />;
 }
 
-export default App
+export default App;
